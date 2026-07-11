@@ -63,7 +63,7 @@ function normalizeUser(raw: CursorApiUser): UserUsage {
 /**
  * Fetches Cursor Admin API spend for the given window, paginating across
  * 30-day chunks (the API's per-call cap) and summing the result. If any
- * chunk fails after retries are exhausted, the ENTIRE call fails — never
+ * chunk fails after retries are exhausted, the ENTIRE call fails. Never
  * silently sum only the chunks that succeeded, which would under-report
  * spend without any indication the number is incomplete.
  */

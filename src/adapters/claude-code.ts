@@ -44,7 +44,7 @@ function normalizeUser(raw: ClaudeApiUser): UserUsage {
  * Fetches Claude Code spend via Anthropic's Analytics/Admin API. If the
  * window's start predates 2026-01-01 (the Analytics API's hard start date,
  * not a rolling window), throws DataUnavailableError rather than silently
- * returning an incomplete or zeroed result — the caller falls back to the
+ * returning an incomplete or zeroed result. The caller falls back to the
  * CSV-import path for that portion of the window.
  */
 export async function fetchClaudeCodeSpend(
