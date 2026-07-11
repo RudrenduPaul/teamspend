@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { CSVSchemaError, EmptyCSVError } from "../errors.js";
+import { CSVRowError, CSVSchemaError, EmptyCSVError } from "../errors.js";
 import { sumCost } from "../schema.js";
 import type {
   AdapterResult,
@@ -69,9 +69,18 @@ export async function importFromCSV(
   const rows = parseCSV(text);
   const userTotals = new Map<string, UserUsage>();
 
-  for (const row of rows) {
-    const existing = userTotals.get(row.user_email);
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2; // +1 for header row, +1 for 1-based numbering
+    if (row.user_email.length === 0) {
+      throw new CSVRowError(rowNumber, "user_email is empty");
+    }
+
     const cost = Number.parseFloat(row.cost_usd);
+    if (!Number.isFinite(cost)) {
+      throw new CSVRowError(rowNumber, `cost_usd "${row.cost_usd}" is not a valid number`);
+    }
+
+    const existing = userTotals.get(row.user_email);
     const isEstimated = row.is_estimated.toLowerCase() === "true";
 
     if (existing) {
@@ -90,7 +99,7 @@ export async function importFromCSV(
         isEstimated,
       });
     }
-  }
+  });
 
   const users = [...userTotals.values()];
   return {

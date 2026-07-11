@@ -61,6 +61,16 @@ export class EmptyCSVError extends Error {
   }
 }
 
+export class CSVRowError extends Error {
+  constructor(
+    public readonly rowNumber: number,
+    reason: string,
+  ) {
+    super(`CSV row ${rowNumber} is invalid: ${reason}`);
+    this.name = "CSVRowError";
+  }
+}
+
 export class InvalidCliArgError extends Error {
   constructor(message: string) {
     super(message);
