@@ -147,6 +147,16 @@ export async function run(argv: string[]): Promise<number> {
       );
     }
 
+    // Printed every run, not just on first-run gitignore scaffolding: a
+    // .gitignore entry protects the on-disk file, but does nothing about
+    // this same per-user email + spend data being printed to stdout, which
+    // lands in CI build logs (often world-readable for public repos) if
+    // this command is wired into a scheduled workflow (found during the
+    // CSO security review).
+    console.error(
+      "Note: this output includes per-user email and spend data. If running in CI, confirm build logs are private.",
+    );
+
     if (values.json) {
       console.log(JSON.stringify(report, null, 2));
     } else {
@@ -161,14 +171,14 @@ export async function run(argv: string[]): Promise<number> {
   }
 }
 
-// Resolve both sides through realpathSync before comparing — a plain
+// Resolve both sides through realpathSync before comparing. A plain
 // `import.meta.url === file://${process.argv[1]}` string comparison breaks
 // on macOS whenever the invocation path traverses a symlink (e.g.
 // /tmp -> /private/tmp), since import.meta.url resolves the real path while
 // process.argv[1] keeps the as-typed one, so the strings silently never
 // match and the CLI no-ops with no error. (import.meta.main would sidestep
 // this too, but it requires Node 22.18+/24.2+ and is still Early
-// Development stability — too new for this package's >=18.3.0 floor.)
+// Development stability, too new for this package's >=18.3.0 floor.)
 const isMainModule = (() => {
   try {
     return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1] ?? "");

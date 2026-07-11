@@ -94,6 +94,31 @@ describe("fetchWithRetry", () => {
     await vi.runAllTimersAsync();
     await assertion;
   });
+
+  it("passes an AbortSignal so a stalled connection cannot hang forever (CSO review fix)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchWithRetry({ tool: "cursor", url: "https://x", authHeader: {} });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://x",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("treats an abort/timeout rejection the same as any other network error (retry then fail)", async () => {
+    const abortError = new DOMException("The operation was aborted", "TimeoutError");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(abortError));
+    const promise = fetchWithRetry({
+      tool: "cursor",
+      url: "https://x",
+      authHeader: {},
+    });
+    const assertion = expect(promise).rejects.toThrow(RetryExhaustedError);
+    await vi.runAllTimersAsync();
+    await assertion;
+  });
 });
 
 describe("requireField", () => {

@@ -6,8 +6,8 @@ const GITIGNORE_ENTRY = "teamspend-snapshot-*.json";
 /**
  * Scaffolds a .gitignore entry for the report file in the CWD if one doesn't
  * already exist, and returns whether the first-run spend-sensitivity warning
- * should be printed. The report contains per-user email + spend — quasi-
- * sensitive data that shouldn't land in a repo by accident during a
+ * should be printed. The report contains per-user email + spend, which is
+ * quasi-sensitive data that shouldn't land in a repo by accident during a
  * fast-moving migration.
  */
 export async function scaffoldGitignore(cwd: string): Promise<boolean> {
@@ -18,7 +18,7 @@ export async function scaffoldGitignore(cwd: string): Promise<boolean> {
     const contents = await readFile(gitignorePath, "utf-8");
     alreadyPresent = contents.includes(GITIGNORE_ENTRY);
   } catch {
-    // No .gitignore yet — that's fine, we'll create one.
+    // No .gitignore yet, that's fine, we'll create one.
   }
 
   if (!alreadyPresent) {
@@ -98,6 +98,10 @@ export async function writeJsonReport(
 ): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "").slice(0, 15);
   const path = `${cwd}/teamspend-snapshot-${timestamp}.json`;
-  await writeFile(path, JSON.stringify(report, null, 2));
+  // mode: 0o600 restricts the file to owner read/write only. Without it,
+  // Node's default (0o666 masked by the process umask, typically 0o644)
+  // leaves per-user email + spend readable by any other local user on a
+  // shared host (found during the CSO security review).
+  await writeFile(path, JSON.stringify(report, null, 2), { mode: 0o600 });
   return path;
 }

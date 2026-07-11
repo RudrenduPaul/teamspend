@@ -100,4 +100,26 @@ describe("importFromCSV", () => {
       await unlink(tmpPath);
     }
   });
+
+  it("strips ANSI/control-character escape sequences from a CSV cell (CSO review fix)", async () => {
+    const tmpPath = fileURLToPath(
+      new URL("../../fixtures/tmp-ansi-injection.csv", import.meta.url),
+    );
+    // \x1b is ESC -- a crafted cell could otherwise inject terminal escape
+    // sequences into the non-JSON summary output.
+    await writeFile(
+      tmpPath,
+      "date,user_email,cost_usd,is_estimated\n2025-11-01,evil\x1b[31m@x.com,12.50,false\n",
+    );
+    try {
+      const result = await importFromCSV(tmpPath, "cursor", {
+        start: "2025-11-01",
+        end: "2025-11-30",
+      });
+      expect(result.users[0]?.userEmail).toBe("evil[31m@x.com");
+      expect(result.users[0]?.userEmail).not.toContain("\x1b");
+    } finally {
+      await unlink(tmpPath);
+    }
+  });
 });
