@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { writeFile, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { importFromCSV } from "./csv-import.js";
-import { CSVSchemaError, EmptyCSVError } from "../errors.js";
+import { CSVRowError, CSVSchemaError, EmptyCSVError } from "../errors.js";
 
 const FIXTURE_PATH = fileURLToPath(
   new URL("../../fixtures/csv-import.fixture.csv", import.meta.url),
@@ -56,6 +56,46 @@ describe("importFromCSV", () => {
           end: "2025-11-30",
         }),
       ).rejects.toThrow(EmptyCSVError);
+    } finally {
+      await unlink(tmpPath);
+    }
+  });
+
+  it("throws CSVRowError instead of silently producing NaN for a malformed cost value", async () => {
+    const tmpPath = fileURLToPath(
+      new URL("../../fixtures/tmp-bad-cost.csv", import.meta.url),
+    );
+    await writeFile(
+      tmpPath,
+      "date,user_email,cost_usd,is_estimated\n2025-11-01,a@x.com,not-a-number,false\n",
+    );
+    try {
+      await expect(
+        importFromCSV(tmpPath, "cursor", {
+          start: "2025-11-01",
+          end: "2025-11-30",
+        }),
+      ).rejects.toThrow(CSVRowError);
+    } finally {
+      await unlink(tmpPath);
+    }
+  });
+
+  it("throws CSVRowError for an empty user_email instead of grouping under an empty key", async () => {
+    const tmpPath = fileURLToPath(
+      new URL("../../fixtures/tmp-bad-email.csv", import.meta.url),
+    );
+    await writeFile(
+      tmpPath,
+      "date,user_email,cost_usd,is_estimated\n2025-11-01,,12.50,false\n",
+    );
+    try {
+      await expect(
+        importFromCSV(tmpPath, "cursor", {
+          start: "2025-11-01",
+          end: "2025-11-30",
+        }),
+      ).rejects.toThrow(CSVRowError);
     } finally {
       await unlink(tmpPath);
     }
