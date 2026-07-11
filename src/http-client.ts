@@ -6,6 +6,7 @@ import {
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 500;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 function isRetryable(status: number): "rate-limit" | "server-error" | null {
   if (status === 429) return "rate-limit";
@@ -37,7 +38,17 @@ export async function fetchWithRetry(
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await fetch(url, { headers: authHeader });
+      // Without a signal, a stalled connection (a slow proxy, a degraded but
+      // not erroring admin API) never settles and this await never resolves
+      // or rejects, so none of the retry/backoff logic below ever engages
+      // and the process hangs indefinitely (found during the CSO security
+      // review). AbortSignal.timeout rejects with a DOMException, which
+      // falls through to the generic catch block below and is correctly
+      // treated as the existing "timeout" failure kind.
+      const response = await fetch(url, {
+        headers: authHeader,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
 
       if (response.status === 401 || response.status === 403) {
         throw new AuthenticationError(
@@ -70,7 +81,7 @@ export async function fetchWithRetry(
       ) {
         throw error;
       }
-      // Network error / timeout — treated identically to a 5xx.
+      // Network error / timeout, treated identically to a 5xx.
       lastFailureKind = "timeout";
       if (attempt < MAX_RETRIES) {
         await sleep(BASE_DELAY_MS * 2 ** attempt);

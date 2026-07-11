@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -72,6 +72,27 @@ describe("writeJsonReport and scaffoldGitignore", () => {
     expect(jsonPath).toMatch(/teamspend-snapshot-\d{4}-\d{2}-\d{2}T\d+\.json$/);
     const contents = JSON.parse(await readFile(jsonPath, "utf-8"));
     expect(contents.deltaUsd).toBe(30);
+  });
+
+  it("restricts the report file to owner read/write only ([redacted] fix, per-user data must not be world/group readable)", async () => {
+    tmpDir = await mkdtemp(path.join(tmpdir(), "teamspend-test-"));
+    const before: PeriodOutcome = {
+      label: "before",
+      tool: "cursor",
+      result: makeResult("cursor", 100),
+      error: null,
+    };
+    const after: PeriodOutcome = {
+      label: "after",
+      tool: "claude-code",
+      result: makeResult("claude-code", 130),
+      error: null,
+    };
+    const report = buildComparison(before, after);
+
+    const jsonPath = await writeJsonReport(report, tmpDir);
+    const stats = await stat(jsonPath);
+    expect(stats.mode & 0o777).toBe(0o600);
   });
 
   it("scaffolds a .gitignore entry when none exists and warns on first run", async () => {

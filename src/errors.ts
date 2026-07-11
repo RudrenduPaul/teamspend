@@ -27,7 +27,7 @@ export class SchemaDriftError extends Error {
     public readonly unexpectedField: string,
   ) {
     super(
-      `${tool} API returned an unexpected shape (field: ${unexpectedField}) — teamspend may need an update`,
+      `${tool} API returned an unexpected shape (field: ${unexpectedField}), teamspend may need an update`,
     );
     this.name = "SchemaDriftError";
   }
@@ -39,7 +39,7 @@ export class DataUnavailableError extends Error {
     public readonly reason: string,
   ) {
     super(
-      `No API data available for ${tool}: ${reason} — provide a CSV file per the documented schema`,
+      `No API data available for ${tool}: ${reason}, provide a CSV file per the documented schema`,
     );
     this.name = "DataUnavailableError";
   }

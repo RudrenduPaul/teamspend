@@ -22,8 +22,8 @@ export interface ComparisonReport {
 
 /**
  * Builds the before/after comparison report from two independently-settled
- * adapter fetches. Never treats a partial failure as a complete comparison —
- * if either side failed, delta is null and the failed side is marked, not
+ * adapter fetches. Never treats a partial failure as a complete comparison.
+ * If either side failed, delta is null and the failed side is marked, not
  * silently dropped from the report.
  */
 export function buildComparison(

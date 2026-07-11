@@ -17,6 +17,19 @@ interface CSVRow {
   is_estimated: string;
 }
 
+/**
+ * Strips C0 control characters (0x00-0x1f), including ANSI/OSC terminal
+ * escape sequences, from a CSV cell value. Without this, a crafted
+ * user_email in an imported CSV could inject escape codes into the
+ * non-JSON terminal summary output (found during the [redacted ]review) -
+ * JSON.stringify already escapes these, so this only matters for the
+ * human-readable render path, but stripping at parse time protects every
+ * consumer, not just that one.
+ */
+function stripControlChars(value: string): string {
+  return value.replace(/[\x00-\x1f]/g, "");
+}
+
 function parseCSV(text: string): CSVRow[] {
   const lines = text
     .split("\n")
@@ -41,7 +54,7 @@ function parseCSV(text: string): CSVRow[] {
   const estimatedIdx = header.indexOf("is_estimated");
 
   return lines.slice(1).map((line) => {
-    const cells = line.split(",").map((c) => c.trim());
+    const cells = line.split(",").map((c) => stripControlChars(c.trim()));
     return {
       date: cells[dateIdx] ?? "",
       user_email: cells[emailIdx] ?? "",
@@ -54,7 +67,7 @@ function parseCSV(text: string): CSVRow[] {
 /**
  * Imports before-window spend from a CSV file for a tool whose admin API
  * doesn't cover the requested window (e.g. Claude Code before 2026-01-01).
- * Schema: date, user_email, cost_usd, is_estimated — one row per user per day.
+ * Schema: date, user_email, cost_usd, is_estimated. One row per user per day.
  */
 export async function importFromCSV(
   csvPath: string,
