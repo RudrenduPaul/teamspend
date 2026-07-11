@@ -3,18 +3,13 @@
 [![CI](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.3.0-brightgreen.svg)](package.json)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
 
-Your team switched from one AI coding tool to another. Did it actually save money? Right now the only way to know is opening two admin dashboards and doing the math by hand. teamspend does that math for you, in one command.
+**Your AI coding tools will never tell you if switching between them actually saved money. teamspend does, in one command.**
 
     npx teamspend snapshot --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
-That's it. Real numbers pulled straight from each vendor's own API, a clean before and after, done.
-
-## Why this exists
-
-We talked to a team mid-migration between two AI coding tools who wanted a straight answer to a simple question: is this switch actually cheaper. Their old tool's dashboard could tell them what they used to spend. Their new tool's dashboard could tell them what they spend now. Neither could put both numbers side by side, because no vendor has a reason to make it easy to compare their price against a competitor's.
-
-So we built the thing that does exactly that and nothing else.
+More teams are running more than one AI coding tool at once, or moving between them, than ever before. Every one of those tools has a dashboard that's perfectly accurate about itself and structurally incapable of showing you anything else. teamspend is the missing piece: one real number, pulled straight from both tools' own APIs, showing exactly what changed.
 
 ## See it in action
 
@@ -35,52 +30,65 @@ So we built the thing that does exactly that and nothing else.
 
     Full report: ./teamspend-snapshot-2026-07-11T142842.json
 
-No scraping, no estimates, no guesswork. Every number comes straight from the vendor's own admin API (Cursor's Admin API, Anthropic's Claude Enterprise Analytics API). If your comparison window reaches back further than a tool's API history, a CSV import fills that gap using the same normalized output.
+That's the whole product. One command, one honest number, zero spreadsheets.
+
+## What it actually does
+
+- **Pulls real numbers, not scrapes or estimates.** Talks directly to Cursor's Admin API and Anthropic's Claude Enterprise Analytics API. What you see is what the vendor itself reports.
+- **Compares across tools, which no single vendor dashboard will ever do.** Cursor's dashboard shows Cursor. Claude Code's dashboard shows Claude Code. teamspend puts both numbers in the same sentence.
+- **Fills historical gaps with CSV import.** If your comparison window reaches back further than a tool's API history, hand it a CSV in the same shape and it merges in seamlessly.
+- **Never fails silently.** If one side of the comparison can't be fetched, you get a clear "data unavailable" and a reason, never a wrong number presented as a right one.
+- **Retries the way a production client should.** Rate limits and transient errors get exponential backoff automatically, capped and bounded, so a flaky API call doesn't mean a flaky result.
+- **Ships with zero runtime dependencies.** No supply chain to audit but our own code. Native `fetch`, native argument parsing, native file I/O.
 
 ## Get started in under a minute
 
     npm install -g teamspend
 
-Then give it the two API keys for the tools you're comparing:
+Give it the two API keys for the tools you're comparing:
 
     export TEAMSPEND_CURSOR_TOKEN=<your Cursor Admin API key>
     export TEAMSPEND_CLAUDE_CODE_TOKEN=<your Anthropic Admin/Analytics API key>
 
-Both need org-admin-level access on their platform. If you can see billing for your org today, you already have what you need.
-
-Run it once, get your answer:
+Both need org-admin-level access on their platform. If you can already see billing for your org, you have what you need.
 
     teamspend snapshot --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 ## Built to be trusted, not just used
 
-We think a tool that touches your team's spend and email data should earn that trust in the open, so here's what's actually true about this codebase, checked on every commit:
+A tool that touches your team's spend and email data should earn that trust in the open. Here's what's actually true about this codebase, checked on every commit, not asserted in a marketing paragraph:
 
 | | |
 |---|---|
-| Runtime dependencies | Zero. Native `fetch`, native `node:util.parseArgs`, native `node:fs`. Nothing to audit but our own code. |
+| Runtime dependencies | Zero |
 | Package size | 19.7 kB packed, 67.8 kB unpacked |
 | Cold install to first response | About 1.2 seconds |
 | Tests | 36 passing, 97.7% line coverage |
 | Known vulnerabilities | Zero, per `npm audit` |
-| File permissions | The report file is written owner-only (`0600`) and auto-added to `.gitignore`, since it holds per-user emails and spend |
+| File permissions | Report files are owner-only (`0600`) and auto-gitignored, since they hold per-user emails and spend |
 
 ## CSV import, for the history a live API can't reach
-
-If your "before" window predates a tool's API data availability (Anthropic's Analytics API only goes back to January 1, 2026), hand teamspend a CSV instead:
 
     date,user_email,cost_usd,is_estimated
     2025-11-01,jane@example.com,12.50,false
 
     npx teamspend snapshot --tools cursor,claude-code --before 2025-11-01:2025-11-30 --after 2026-06-01:2026-06-30 --before-csv ./before.csv
 
+## Roadmap
+
+This started narrow on purpose: prove the idea on the two tools one real team was actually migrating between, get it right, then grow it. Next up, roughly in order of how often people ask:
+
+- [ ] GitHub Copilot adapter
+- [ ] OpenCode adapter
+- [ ] Non-USD billing support
+
+Want one of these sooner, or a tool that isn't on the list? Open an issue and say so. That's genuinely how the order gets decided.
+
 ## Good to know before you run it
 
-- This is a snapshot tool, not a dashboard. It answers one question well: what changed between two periods. It doesn't run in the background or track anything ongoing.
-- Cursor and Claude Code are the two tools this version talks to. Copilot and OpenCode aren't wired up yet.
-- USD only, for now.
-- The output includes real emails and dollar amounts, printed to your terminal and saved to a report file. If you run this in a scheduled CI job on a public repo, that data lands in your build logs, so check your CI provider's log visibility before you automate it.
-- The test fixtures are built from each vendor's published API docs, not a live account. If your first real run throws a parsing error, that's a genuine signal the vendor changed something, not a bug we're hiding from you. Open an issue, it helps.
+- This is a snapshot tool, not a running dashboard. It answers one question well and stops.
+- The output includes real emails and dollar amounts, printed to your terminal and saved to a report file. If you wire this into a scheduled CI job on a public repo, that data lands in your build logs, so check your CI provider's log visibility first.
+- Test fixtures are built from each vendor's published API docs, not a live account. If your first real run throws a parsing error, that's a genuine signal a vendor's API shape drifted, not a bug we're hiding from you. Open an issue, it helps everyone who runs into it next.
 
 ## Contributing
 
@@ -91,6 +99,8 @@ Found a rough edge, a vendor API that shifted shape, or a tool you wish this sup
     npm run lint
     npm run typecheck
     npm test
+
+If teamspend saved you from opening two dashboards and doing math by hand, a star helps other people with the same problem find it.
 
 ## License
 
