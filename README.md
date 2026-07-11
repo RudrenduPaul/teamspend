@@ -27,16 +27,6 @@ We built this because a team we talked to was mid-migration between two AI codin
 
 Pulls directly from each tool's own admin API (Cursor's Admin API, Anthropic's Claude Enterprise Analytics/Admin API), not a scrape or an estimate. If a window predates a tool's API data availability, a CSV-import fallback covers that period with the same output shape.
 
-## Honest comparison
-
-This is a narrow tool built for one specific job. It is not trying to be everything these other projects already do well.
-
-**[tokscale](https://github.com/junhoyeo/tokscale)** is a genuinely good project: 4,000+ stars, tracks personal token usage across 40+ coding-agent tools with a leaderboard and contribution graph. If what you want is a personal usage tracker across every AI CLI you use, use it. teamspend doesn't compete with that. It exists for a different question ("what did the team spend, before versus after a migration"), which tokscale's own community, in seven months of active use, has never once asked it to answer.
-
-**[Vantage](https://www.vantage.sh)** already has real Cursor and Anthropic cost connectors and is a solid choice if you're already consolidating your full cloud bill through it. teamspend is for teams who want a lightweight, single-purpose tool for one migration decision without adopting a full multi-cloud-cost platform.
-
-**Cursor's, Claude Code's, and Copilot's own admin consoles** are each accurate for their own tool. Use them if you only run one. teamspend exists for the moment you're comparing two, because none of them will ever put a competitor's number in the same view as their own.
-
 ## Install and setup
 
     npm install -g teamspend
