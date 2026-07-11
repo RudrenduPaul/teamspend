@@ -1,0 +1,103 @@
+import { readFile } from "node:fs/promises";
+import { CSVSchemaError, EmptyCSVError } from "../errors.js";
+import { sumCost } from "../schema.js";
+import type {
+  AdapterResult,
+  DateWindow,
+  ToolId,
+  UserUsage,
+} from "../schema.js";
+
+const EXPECTED_COLUMNS = ["date", "user_email", "cost_usd", "is_estimated"];
+
+interface CSVRow {
+  date: string;
+  user_email: string;
+  cost_usd: string;
+  is_estimated: string;
+}
+
+function parseCSV(text: string): CSVRow[] {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length === 0) {
+    throw new EmptyCSVError("<csv content>");
+  }
+
+  const header = lines[0]?.split(",").map((h) => h.trim()) ?? [];
+  const missingColumns = EXPECTED_COLUMNS.filter(
+    (col) => !header.includes(col),
+  );
+  if (missingColumns.length > 0) {
+    throw new CSVSchemaError(EXPECTED_COLUMNS);
+  }
+
+  const dateIdx = header.indexOf("date");
+  const emailIdx = header.indexOf("user_email");
+  const costIdx = header.indexOf("cost_usd");
+  const estimatedIdx = header.indexOf("is_estimated");
+
+  return lines.slice(1).map((line) => {
+    const cells = line.split(",").map((c) => c.trim());
+    return {
+      date: cells[dateIdx] ?? "",
+      user_email: cells[emailIdx] ?? "",
+      cost_usd: cells[costIdx] ?? "",
+      is_estimated: cells[estimatedIdx] ?? "",
+    };
+  });
+}
+
+/**
+ * Imports before-window spend from a CSV file for a tool whose admin API
+ * doesn't cover the requested window (e.g. Claude Code before 2026-01-01).
+ * Schema: date, user_email, cost_usd, is_estimated — one row per user per day.
+ */
+export async function importFromCSV(
+  csvPath: string,
+  source: ToolId,
+  window: DateWindow,
+): Promise<AdapterResult> {
+  const text = await readFile(csvPath, "utf-8");
+  if (text.trim().length === 0) {
+    throw new EmptyCSVError(csvPath);
+  }
+
+  const rows = parseCSV(text);
+  const userTotals = new Map<string, UserUsage>();
+
+  for (const row of rows) {
+    const existing = userTotals.get(row.user_email);
+    const cost = Number.parseFloat(row.cost_usd);
+    const isEstimated = row.is_estimated.toLowerCase() === "true";
+
+    if (existing) {
+      existing.costUsd += cost;
+      existing.isEstimated = existing.isEstimated || isEstimated;
+    } else {
+      userTotals.set(row.user_email, {
+        userId: row.user_email,
+        userEmail: row.user_email,
+        inputTokens: null,
+        outputTokens: null,
+        cacheReadTokens: null,
+        cacheWriteTokens: null,
+        requests: null,
+        costUsd: cost,
+        isEstimated,
+      });
+    }
+  }
+
+  const users = [...userTotals.values()];
+  return {
+    source,
+    window,
+    totalCostUsd: sumCost(users),
+    isEstimated: users.some((u) => u.isEstimated),
+    users,
+  };
+}

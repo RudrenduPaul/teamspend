@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# teamspend snapshot reports contain per-user email + spend data — never commit these
+teamspend-snapshot-*.json
+
+# credentials are supplied via env vars or a local config file, never committed
+teamspend.config.json
+.env
