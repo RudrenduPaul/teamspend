@@ -90,7 +90,7 @@ A tool that touches your team's spend and email data should earn that trust in t
 | | |
 |---|---|
 | Runtime dependencies | Zero |
-| Package size | 24.7 kB packed, 80.9 kB unpacked |
+| Package size | 27.3 kB packed, 88.3 kB unpacked |
 | Cold install to first response | Under 1 second, measured with a cleared npm/npx cache |
 | Tests | 47 passing, 98.2% line coverage |
 | Known vulnerabilities | Zero, per `npm audit` |
