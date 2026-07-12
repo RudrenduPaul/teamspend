@@ -1,5 +1,6 @@
 # teamspend
 
+[![npm version](https://img.shields.io/npm/v/teamspend.svg)](https://www.npmjs.com/package/teamspend)
 [![CI](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.3.0-brightgreen.svg)](package.json)
@@ -9,11 +10,37 @@
 
     npx teamspend snapshot --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
+<!-- TODO: record a real terminal capture (asciinema or a short GIF) of the command above
+     against a real Cursor + Claude Code org and embed it here. Capture script:
+     1. export TEAMSPEND_CURSOR_TOKEN=... TEAMSPEND_CLAUDE_CODE_TOKEN=...
+     2. Run the exact command in the hook above in a clean terminal, 80 columns wide.
+     3. Record with `asciinema rec demo.cast` or a short screen-recording GIF, 10-15s,
+        ending on the printed DELTA line.
+     4. Save as demo.gif in the repo root, then replace this comment with
+        `![teamspend snapshot output showing a before/after spend delta](demo.gif)`. -->
+
 More teams are running more than one AI coding tool at once, or moving between them, than ever before. Every one of those tools has a dashboard that's perfectly accurate about itself and structurally incapable of showing you anything else. teamspend is the missing piece: one real number, pulled straight from both tools' own APIs, showing exactly what changed.
+
+## Table of contents
+
+- [See it in action](#see-it-in-action)
+- [What it actually does](#what-it-actually-does)
+- [Get started in under a minute](#get-started-in-under-a-minute)
+- [Built to be trusted, not just used](#built-to-be-trusted-not-just-used)
+- [CSV import, for the history a live API can't reach](#csv-import-for-the-history-a-live-api-cant-reach)
+- [Roadmap](#roadmap)
+- [Good to know before you run it](#good-to-know-before-you-run-it)
+- [What is teamspend, and why does it exist](#what-is-teamspend-and-why-does-it-exist)
+- [FAQ](#faq)
+- [Contributing](#contributing)
+- [Success stories](#success-stories)
+- [License](#license)
 
 ## See it in action
 
     npx teamspend snapshot --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+
+Example output (shape shown below; your real numbers come from your own org's API data):
 
     teamspend snapshot -- migration cost comparison
     Tools: cursor -> claude-code
@@ -38,7 +65,8 @@ That's the whole product. One command, one honest number, zero spreadsheets.
 - **Compares across tools, which no single vendor dashboard will ever do.** Cursor's dashboard shows Cursor. Claude Code's dashboard shows Claude Code. teamspend puts both numbers in the same sentence.
 - **Fills historical gaps with CSV import.** If your comparison window reaches back further than a tool's API history, hand it a CSV in the same shape and it merges in seamlessly.
 - **Never fails silently.** If one side of the comparison can't be fetched, you get a clear "data unavailable" and a reason, never a wrong number presented as a right one.
-- **Retries the way a production client should.** Rate limits and transient errors get exponential backoff automatically, capped and bounded, so a flaky API call doesn't mean a flaky result.
+- **Retries the way a production client should.** Rate limits, timeouts, and transient errors get exponential backoff automatically, capped and bounded, so a flaky API call doesn't mean a flaky result.
+- **Flags suspicious zeros instead of trusting them.** Flat-seat billing tiers on both Cursor and Claude Code can report an exact-looking `$0` for a user with real token activity. teamspend detects that pattern and marks the number estimated rather than showing a misleading zero.
 - **Ships with zero runtime dependencies.** No supply chain to audit but our own code. Native `fetch`, native argument parsing, native file I/O.
 
 ## Get started in under a minute
@@ -61,9 +89,9 @@ A tool that touches your team's spend and email data should earn that trust in t
 | | |
 |---|---|
 | Runtime dependencies | Zero |
-| Package size | 19.7 kB packed, 67.8 kB unpacked |
-| Cold install to first response | About 1.2 seconds |
-| Tests | 36 passing, 97.7% line coverage |
+| Package size | 24.7 kB packed, 80.9 kB unpacked |
+| Cold install to first response | Under 1 second, measured with a cleared npm/npx cache |
+| Tests | 47 passing, 98.2% line coverage |
 | Known vulnerabilities | Zero, per `npm audit` |
 | File permissions | Report files are owner-only (`0600`) and auto-gitignored, since they hold per-user emails and spend |
 
@@ -90,6 +118,31 @@ Want one of these sooner, or a tool that isn't on the list? Open an issue and sa
 - The output includes real emails and dollar amounts, printed to your terminal and saved to a report file. If you wire this into a scheduled CI job on a public repo, that data lands in your build logs, so check your CI provider's log visibility first.
 - Test fixtures are built from each vendor's published API docs, not a live account. If your first real run throws a parsing error, that's a genuine signal a vendor's API shape drifted, not a bug we're hiding from you. Open an issue, it helps everyone who runs into it next.
 - Flat-seat and per-seat billing tiers (Cursor plans without usage overage, Claude.ai Team/Enterprise seats) don't expose true per-user cost through the vendor's own Admin API. When teamspend sees a user with real token or request activity but a reported cost of exactly $0, it marks that user's number, and the whole report, as estimated rather than showing a misleading exact-looking $0.
+
+## What is teamspend, and why does it exist
+
+teamspend is a command-line tool that answers one question: **when a team moves from one AI coding tool to another, or runs two at once, what did that actually cost, in real dollars, pulled straight from each vendor's own admin API?**
+
+It exists because no vendor's dashboard can answer that question, structurally. Cursor's Admin API reports Cursor spend. Anthropic's Claude Enterprise Analytics API reports Claude Code spend. Neither has a reason to show a competitor's number next to its own, so a team mid-migration is left opening two dashboards and doing the subtraction by hand. teamspend does the same thing a `diff` does for two files: it pulls both sides through the same normalized schema and prints one honest delta.
+
+It is deliberately narrow. teamspend does not run continuously, does not host a dashboard, and does not track more than a before/after window for two tools at a time (Cursor and Claude Code, in v0.1). It is a single command that answers a single question and exits.
+
+## FAQ
+
+**Does teamspend replace Cursor's or Claude Code's own admin console?**
+No. Each vendor's console is still the accurate source for that vendor's own numbers, and for anything beyond spend (seat management, usage policy, model access). teamspend exists for the one thing neither console does: putting both tools' numbers in the same comparison.
+
+**What happens if one tool's API call fails partway through?**
+The whole comparison is marked incomplete rather than silently reported as complete. `buildComparison` in `src/compare.ts` only computes a delta when both sides resolved; if either side failed, the report shows `DATA UNAVAILABLE` for that side and a null delta, never a number derived from a partial fetch.
+
+**Does teamspend store or send my team's spend data anywhere?**
+No. It's a local CLI: it calls each vendor's API directly from your machine, prints a summary to your terminal, and writes one JSON report file (`0600` permissions) to your current directory. Nothing is sent to teamspend or any third party.
+
+**Can I use teamspend for tools other than Cursor and Claude Code?**
+Not yet in the published package. GitHub Copilot and OpenCode adapters are next on the roadmap; a CSV-import fallback already lets you supply spend data for any tool in the meantime, using the same `date,user_email,cost_usd,is_estimated` schema documented above.
+
+**Why does a $0 spend number sometimes show up as "estimated" instead of exact?**
+Some billing tiers (flat-seat Cursor plans, Claude.ai Team/Enterprise seats) don't expose true per-user cost through the vendor's own Admin API and report an exact-looking `$0` even for users with real activity. teamspend detects a `$0` cost paired with non-zero token or request counts and flags it as estimated rather than presenting a misleading exact zero. See "Success stories" below for the two independent bug reports in other tools that led to this fix.
 
 ## Contributing
 
