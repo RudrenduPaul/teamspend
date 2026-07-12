@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { fetchCursorSpend } from "./adapters/cursor.js";
+import { fetchCopilotSpend } from "./adapters/copilot.js";
 import { fetchClaudeCodeSpend } from "./adapters/claude-code.js";
 import { importFromCSV } from "./adapters/csv-import.js";
 import { buildComparison, type PeriodOutcome } from "./compare.js";
@@ -14,7 +15,7 @@ import {
 import { InvalidCliArgError, DataUnavailableError } from "./errors.js";
 import type { DateWindow, ToolId } from "./schema.js";
 
-const KNOWN_TOOLS: ToolId[] = ["cursor", "claude-code"];
+const KNOWN_TOOLS: ToolId[] = ["cursor", "claude-code", "copilot"];
 const DATE_RANGE_RE = /^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/;
 
 function parseDateRange(flag: string, value: string): DateWindow {
@@ -52,22 +53,30 @@ function validateWindowOrder(before: DateWindow, after: DateWindow): void {
   }
 }
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing ${name}`);
+  return value;
+}
+
 async function fetchTool(
   tool: ToolId,
   window: DateWindow,
   csvPath: string | undefined,
 ): Promise<PeriodOutcome["result"]> {
   const envVar = `TEAMSPEND_${tool.toUpperCase().replace(/-/g, "_")}_TOKEN`;
-  const apiKey = process.env[envVar];
 
   try {
     if (tool === "cursor") {
-      if (!apiKey) throw new Error(`Missing ${envVar}`);
-      return await fetchCursorSpend(window, apiKey);
+      return await fetchCursorSpend(window, requireEnv(envVar));
     }
     if (tool === "claude-code") {
-      if (!apiKey) throw new Error(`Missing ${envVar}`);
-      return await fetchClaudeCodeSpend(window, apiKey);
+      return await fetchClaudeCodeSpend(window, requireEnv(envVar));
+    }
+    if (tool === "copilot") {
+      const apiKey = requireEnv(envVar);
+      const org = requireEnv("TEAMSPEND_COPILOT_ORG");
+      return await fetchCopilotSpend(window, apiKey, org);
     }
     throw new InvalidCliArgError(`No adapter for tool "${tool}"`);
   } catch (error) {
