@@ -99,14 +99,28 @@ export async function fetchWithRetry(
  * Asserts a field exists on a parsed API response before it is read.
  * Throws SchemaDriftError rather than silently coercing/guessing when a
  * vendor's response shape changes without notice.
+ *
+ * `aliases` is an optional, ordered list of legacy/alternate key names to
+ * fall back to if the primary `field` is absent, guarding against a vendor
+ * silently renaming a field (as happened upstream in rtk-ai/rtk#2732, where
+ * ccusage renamed `month`/`date`/`week` to `period`). No adapter currently
+ * passes aliases -- Cursor and Anthropic have not renamed anything -- but
+ * the mechanism exists so a future rename degrades gracefully instead of
+ * hard-failing.
  */
 export function requireField<T>(
   obj: Record<string, unknown>,
   field: string,
   tool: string,
+  aliases: readonly string[] = [],
 ): T {
-  if (!(field in obj) || obj[field] === undefined) {
-    throw new SchemaDriftError(tool, field);
+  if (field in obj && obj[field] !== undefined) {
+    return obj[field] as T;
   }
-  return obj[field] as T;
+  for (const alias of aliases) {
+    if (alias in obj && obj[alias] !== undefined) {
+      return obj[alias] as T;
+    }
+  }
+  throw new SchemaDriftError(tool, field, aliases);
 }

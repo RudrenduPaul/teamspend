@@ -129,4 +129,36 @@ describe("requireField", () => {
   it("throws SchemaDriftError naming the tool and field when missing", () => {
     expect(() => requireField({}, "foo", "cursor")).toThrow(SchemaDriftError);
   });
+
+  it("uses the primary field when both it and an alias are present", () => {
+    expect(
+      requireField<string>(
+        { period: "primary", month: "legacy" },
+        "period",
+        "cursor",
+        ["month"],
+      ),
+    ).toBe("primary");
+  });
+
+  it("falls back to an alias when the primary field is absent", () => {
+    expect(
+      requireField<string>({ month: "2026-07" }, "period", "cursor", [
+        "month",
+        "date",
+      ]),
+    ).toBe("2026-07");
+  });
+
+  it("throws SchemaDriftError when neither the primary field nor any alias is present", () => {
+    expect(() =>
+      requireField({}, "period", "cursor", ["month", "date"]),
+    ).toThrow(SchemaDriftError);
+  });
+
+  it("includes the tried alias names in the error message when aliases were passed", () => {
+    expect(() =>
+      requireField({}, "period", "cursor", ["month", "date"]),
+    ).toThrow(/month, date/);
+  });
 });
