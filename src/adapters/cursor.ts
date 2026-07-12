@@ -115,6 +115,7 @@ export async function fetchCursorSpend(
         existing.requests =
           (existing.requests ?? 0) + (normalized.requests ?? 0);
         existing.costUsd += normalized.costUsd;
+        existing.isEstimated = existing.isEstimated || normalized.isEstimated;
       } else {
         userTotals.set(normalized.userId, normalized);
       }
