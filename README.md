@@ -62,7 +62,7 @@ That's the whole product. One command, one honest number, zero spreadsheets.
 
 ## What it actually does
 
-- **Pulls real numbers, not scrapes or estimates.** Talks directly to Cursor's Admin API and Anthropic's Claude Enterprise Analytics API. What you see is what the vendor itself reports.
+- **Pulls real numbers, not scrapes or estimates.** Talks directly to Cursor's Admin API, Anthropic's Claude Enterprise Analytics API, and GitHub's Copilot billing usage API. What you see is what the vendor itself reports.
 - **Compares across tools, which no single vendor dashboard will ever do.** Cursor's dashboard shows Cursor. Claude Code's dashboard shows Claude Code. teamspend puts both numbers in the same sentence.
 - **Fills historical gaps with CSV import.** If your comparison window reaches back further than a tool's API history, hand it a CSV in the same shape and it merges in seamlessly.
 - **Never fails silently.** If one side of the comparison can't be fetched, you get a clear "data unavailable" and a reason, never a wrong number presented as a right one.
@@ -79,9 +79,19 @@ Give it the two API keys for the tools you're comparing:
     export TEAMSPEND_CURSOR_TOKEN=<your Cursor Admin API key>
     export TEAMSPEND_CLAUDE_CODE_TOKEN=<your Anthropic Admin/Analytics API key>
 
-Both need org-admin-level access on their platform. If you can already see billing for your org, you have what you need.
+Comparing against GitHub Copilot instead needs two variables, since a GitHub token isn't org-scoped
+the way Cursor's and Anthropic's admin keys are:
+
+    export TEAMSPEND_COPILOT_TOKEN=<a GitHub PAT with org billing read access>
+    export TEAMSPEND_COPILOT_ORG=<your GitHub org login>
+
+All three need org-admin-level access on their platform. If you can already see billing for your org, you have what you need.
 
     teamspend snapshot --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+
+`--tools` always takes exactly two, any pair of `cursor`, `claude-code`, or `copilot`:
+
+    teamspend snapshot --tools claude-code,copilot --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 ## Built to be trusted, not just used
 
@@ -90,9 +100,9 @@ A tool that touches your team's spend and email data should earn that trust in t
 | | |
 |---|---|
 | Runtime dependencies | Zero |
-| Package size | 27.3 kB packed, 88.3 kB unpacked |
+| Package size | 31.3 kB packed, 103.1 kB unpacked |
 | Cold install to first response | Under 1 second, measured with a cleared npm/npx cache |
-| Tests | 47 passing, 98.2% line coverage |
+| Tests | 53 passing, 98.2% line coverage |
 | Known vulnerabilities | Zero, per `npm audit` |
 | File permissions | Report files are owner-only (`0600`) and auto-gitignored, since they hold per-user emails and spend |
 
@@ -105,9 +115,8 @@ A tool that touches your team's spend and email data should earn that trust in t
 
 ## Roadmap
 
-This started narrow on purpose: prove the idea on the two tools one real team was actually migrating between, get it right, then grow it. Next up, roughly in order of how often people ask:
+This started narrow on purpose: prove the idea on the two tools one real team was actually migrating between, get it right, then grow it. GitHub Copilot was the first tool added after that. Next up, roughly in order of how often people ask:
 
-- [ ] GitHub Copilot adapter
 - [ ] OpenCode adapter
 - [ ] Non-USD billing support
 
@@ -119,6 +128,8 @@ Want one of these sooner, or a tool that isn't on the list? Open an issue and sa
 - The output includes real emails and dollar amounts, printed to your terminal and saved to a report file. If you wire this into a scheduled CI job on a public repo, that data lands in your build logs, so check your CI provider's log visibility first.
 - Test fixtures are built from each vendor's published API docs, not a live account. If your first real run throws a parsing error, that's a genuine signal a vendor's API shape drifted, not a bug we're hiding from you. Open an issue, it helps everyone who runs into it next.
 - Flat-seat and per-seat billing tiers (Cursor plans without usage overage, Claude.ai Team/Enterprise seats) don't expose true per-user cost through the vendor's own Admin API. When teamspend sees a user with real token or request activity but a reported cost of exactly $0, it marks that user's number, and the whole report, as estimated rather than showing a misleading exact-looking $0.
+- GitHub's per-user Copilot cost comes from its billing usage endpoint, which reports a real net dollar amount directly (not a vendor-reported field that can go misleadingly to `$0`), so `isEstimated` is always `false` for Copilot data -- there is no flat-seat ambiguity to flag the way there is for Cursor and Claude Code.
+- A GitHub PAT is not org-scoped the way Cursor's and Anthropic's admin keys are, so a Copilot snapshot first lists every org member, then queries that endpoint once per member per calendar month in the window. For a large org or a multi-month window this is visibly slower than the Cursor/Claude Code path -- a real GitHub API shape constraint, not an implementation shortcut.
 
 ## What is teamspend, and why does it exist
 
@@ -126,7 +137,7 @@ teamspend is a command-line tool that answers one question: **when a team moves 
 
 It exists because no vendor's dashboard can answer that question, structurally. Cursor's Admin API reports Cursor spend. Anthropic's Claude Enterprise Analytics API reports Claude Code spend. Neither has a reason to show a competitor's number next to its own, so a team mid-migration is left opening two dashboards and doing the subtraction by hand. teamspend does the same thing a `diff` does for two files: it pulls both sides through the same normalized schema and prints one honest delta.
 
-It is deliberately narrow. teamspend does not run continuously, does not host a dashboard, and does not track more than a before/after window for two tools at a time (Cursor and Claude Code, in v0.1). It is a single command that answers a single question and exits.
+It is deliberately narrow. teamspend does not run continuously, does not host a dashboard, and does not track more than a before/after window for two tools at a time (Cursor, Claude Code, and GitHub Copilot as of v0.2). It is a single command that answers a single question and exits.
 
 ## How teamspend compares
 
@@ -158,7 +169,7 @@ The whole comparison is marked incomplete rather than silently reported as compl
 No. It's a local CLI: it calls each vendor's API directly from your machine, prints a summary to your terminal, and writes one JSON report file (`0600` permissions) to your current directory. Nothing is sent to teamspend or any third party.
 
 **Can I use teamspend for tools other than Cursor and Claude Code?**
-Not yet in the published package. GitHub Copilot and OpenCode adapters are next on the roadmap; a CSV-import fallback already lets you supply spend data for any tool in the meantime, using the same `date,user_email,cost_usd,is_estimated` schema documented above.
+GitHub Copilot is supported as of v0.2, alongside Cursor and Claude Code. An OpenCode adapter is next on the roadmap, though OpenCode's local-only session storage (no per-user attribution, no admin API) means it can only ever report one developer's own machine, not a team-wide comparison the way the other three do. A CSV-import fallback already lets you supply spend data for any tool in the meantime, using the same `date,user_email,cost_usd,is_estimated` schema documented above.
 
 **Why does a $0 spend number sometimes show up as "estimated" instead of exact?**
 Some billing tiers (flat-seat Cursor plans, Claude.ai Team/Enterprise seats) don't expose true per-user cost through the vendor's own Admin API and report an exact-looking `$0` even for users with real activity. teamspend detects a `$0` cost paired with non-zero token or request counts and flags it as estimated rather than presenting a misleading exact zero. See "Success stories" below for the two independent bug reports in other tools that led to this fix.

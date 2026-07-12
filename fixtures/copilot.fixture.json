@@ -1,0 +1,64 @@
+{
+  "members": [
+    { "login": "r-chen" },
+    { "login": "j-kim" }
+  ],
+  "billingUsage": {
+    "r-chen": {
+      "usageItems": [
+        {
+          "date": "2026-04-15",
+          "product": "Copilot",
+          "sku": "copilot_premium_request",
+          "quantity": 120,
+          "unitType": "requests",
+          "pricePerUnit": 0.04,
+          "grossAmount": 4.8,
+          "discountAmount": 0,
+          "netAmount": 4.8,
+          "repositoryName": "acme-corp/api"
+        },
+        {
+          "date": "2026-04-22",
+          "product": "Copilot",
+          "sku": "copilot_premium_request",
+          "quantity": 60,
+          "unitType": "requests",
+          "pricePerUnit": 0.04,
+          "grossAmount": 2.4,
+          "discountAmount": 0,
+          "netAmount": 2.4,
+          "repositoryName": "acme-corp/api"
+        },
+        {
+          "date": "2026-04-18",
+          "product": "Actions",
+          "sku": "actions_linux",
+          "quantity": 500,
+          "unitType": "minutes",
+          "pricePerUnit": 0.008,
+          "grossAmount": 4,
+          "discountAmount": 0,
+          "netAmount": 4,
+          "repositoryName": "acme-corp/api"
+        }
+      ]
+    },
+    "j-kim": {
+      "usageItems": [
+        {
+          "date": "2026-04-10",
+          "product": "Copilot",
+          "sku": "copilot_premium_request",
+          "quantity": 30,
+          "unitType": "requests",
+          "pricePerUnit": 0.04,
+          "grossAmount": 1.2,
+          "discountAmount": 0,
+          "netAmount": 1.2,
+          "repositoryName": "acme-corp/web"
+        }
+      ]
+    }
+  }
+}
