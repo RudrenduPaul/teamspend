@@ -43,20 +43,34 @@ function splitIntoChunks(window: DateWindow): DateWindow[] {
 
 function normalizeUser(raw: CursorApiUser): UserUsage {
   const asRecord = raw as unknown as Record<string, unknown>;
+  const inputTokens = requireField<number>(asRecord, "input_tokens", TOOL);
+  const outputTokens = requireField<number>(asRecord, "output_tokens", TOOL);
+  const requests = requireField<number>(asRecord, "requests", TOOL);
+  const costUsd = requireField<number>(asRecord, "cost_usd", TOOL);
+
+  // Cursor plans without usage overage don't expose true per-user cost via
+  // the Admin API - it reports a technically-valid but structurally
+  // uninformative cost_usd: 0 for a user who clearly has real activity. Flag
+  // that specific combination as estimated rather than presenting a
+  // misleading exact-looking $0 (see ccusage/ccusage#1113 for the same fix
+  // in a different vendor's adapter).
+  const isSuspiciousZero =
+    costUsd === 0 && (inputTokens > 0 || outputTokens > 0 || requests > 0);
+
   return {
     userId: requireField<string>(asRecord, "user_id", TOOL),
     userEmail: raw.email ?? null,
-    inputTokens: requireField<number>(asRecord, "input_tokens", TOOL),
-    outputTokens: requireField<number>(asRecord, "output_tokens", TOOL),
+    inputTokens,
+    outputTokens,
     cacheReadTokens: requireField<number>(asRecord, "cache_read_tokens", TOOL),
     cacheWriteTokens: requireField<number>(
       asRecord,
       "cache_write_tokens",
       TOOL,
     ),
-    requests: requireField<number>(asRecord, "requests", TOOL),
-    costUsd: requireField<number>(asRecord, "cost_usd", TOOL),
-    isEstimated: false,
+    requests,
+    costUsd,
+    isEstimated: isSuspiciousZero,
   };
 }
 
@@ -101,6 +115,7 @@ export async function fetchCursorSpend(
         existing.requests =
           (existing.requests ?? 0) + (normalized.requests ?? 0);
         existing.costUsd += normalized.costUsd;
+        existing.isEstimated = existing.isEstimated || normalized.isEstimated;
       } else {
         userTotals.set(normalized.userId, normalized);
       }
@@ -112,7 +127,7 @@ export async function fetchCursorSpend(
     source: TOOL,
     window,
     totalCostUsd: sumCost(users),
-    isEstimated: false,
+    isEstimated: users.some((u) => u.isEstimated),
     users,
   };
 }

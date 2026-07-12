@@ -23,11 +23,24 @@ interface ClaudeApiResponse {
 
 function normalizeUser(raw: ClaudeApiUser): UserUsage {
   const asRecord = raw as unknown as Record<string, unknown>;
+  const inputTokens = requireField<number>(asRecord, "input_tokens", TOOL);
+  const outputTokens = requireField<number>(asRecord, "output_tokens", TOOL);
+  const costUsd = requireField<number>(asRecord, "spend_usd", TOOL);
+
+  // Claude.ai Team/Enterprise seats don't expose true per-user cost via the
+  // Admin API - it reports a technically-valid but structurally
+  // uninformative spend_usd: 0 for a user who clearly has real token
+  // activity. Flag that specific combination as estimated rather than
+  // presenting a misleading exact-looking $0 (no requests field exists on
+  // this vendor's payload, so the check is token-only).
+  const isSuspiciousZero =
+    costUsd === 0 && (inputTokens > 0 || outputTokens > 0);
+
   return {
     userId: requireField<string>(asRecord, "user_id", TOOL),
     userEmail: requireField<string>(asRecord, "email", TOOL),
-    inputTokens: requireField<number>(asRecord, "input_tokens", TOOL),
-    outputTokens: requireField<number>(asRecord, "output_tokens", TOOL),
+    inputTokens,
+    outputTokens,
     cacheReadTokens: requireField<number>(asRecord, "cache_read_tokens", TOOL),
     cacheWriteTokens: requireField<number>(
       asRecord,
@@ -35,8 +48,8 @@ function normalizeUser(raw: ClaudeApiUser): UserUsage {
       TOOL,
     ),
     requests: null,
-    costUsd: requireField<number>(asRecord, "spend_usd", TOOL),
-    isEstimated: false,
+    costUsd,
+    isEstimated: isSuspiciousZero,
   };
 }
 
@@ -73,7 +86,7 @@ export async function fetchClaudeCodeSpend(
     source: TOOL,
     window,
     totalCostUsd: sumCost(users),
-    isEstimated: false,
+    isEstimated: users.some((u) => u.isEstimated),
     users,
   };
 }
