@@ -25,9 +25,14 @@ export class SchemaDriftError extends Error {
   constructor(
     public readonly tool: string,
     public readonly unexpectedField: string,
+    public readonly triedAliases: readonly string[] = [],
   ) {
+    const aliasSuffix =
+      triedAliases.length > 0
+        ? ` (also checked known aliases: ${triedAliases.join(", ")})`
+        : "";
     super(
-      `${tool} API returned an unexpected shape (field: ${unexpectedField}), teamspend may need an update`,
+      `${tool} API returned an unexpected shape (field: ${unexpectedField})${aliasSuffix}, teamspend may need an update`,
     );
     this.name = "SchemaDriftError";
   }
