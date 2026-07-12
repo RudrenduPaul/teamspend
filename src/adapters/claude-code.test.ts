@@ -34,6 +34,94 @@ describe("fetchClaudeCodeSpend", () => {
     expect(result.totalCostUsd).toBeCloseTo(288.9 + 198.25, 2);
   });
 
+  it("flags a user with real token activity but $0 reported spend as estimated, and flips the result to estimated", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          users: [
+            {
+              user_id: "u1",
+              email: "flat-seat@x.com",
+              input_tokens: 90000,
+              output_tokens: 20000,
+              cache_read_tokens: 0,
+              cache_write_tokens: 0,
+              spend_usd: 0,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await fetchClaudeCodeSpend(
+      { start: "2026-06-01", end: "2026-06-30" },
+      "test-key",
+    );
+
+    expect(result.users).toHaveLength(1);
+    expect(result.users[0]?.isEstimated).toBe(true);
+    expect(result.isEstimated).toBe(true);
+  });
+
+  it("keeps isEstimated false for a genuinely inactive user with zero tokens and $0 spend", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          users: [
+            {
+              user_id: "u1",
+              email: "inactive@x.com",
+              input_tokens: 0,
+              output_tokens: 0,
+              cache_read_tokens: 0,
+              cache_write_tokens: 0,
+              spend_usd: 0,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await fetchClaudeCodeSpend(
+      { start: "2026-06-01", end: "2026-06-30" },
+      "test-key",
+    );
+
+    expect(result.users[0]?.isEstimated).toBe(false);
+    expect(result.isEstimated).toBe(false);
+  });
+
+  it("leaves a normal nonzero-spend user unaffected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          users: [
+            {
+              user_id: "u1",
+              email: "normal@x.com",
+              input_tokens: 90000,
+              output_tokens: 20000,
+              cache_read_tokens: 0,
+              cache_write_tokens: 0,
+              spend_usd: 75.4,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await fetchClaudeCodeSpend(
+      { start: "2026-06-01", end: "2026-06-30" },
+      "test-key",
+    );
+
+    expect(result.users[0]?.isEstimated).toBe(false);
+    expect(result.isEstimated).toBe(false);
+  });
+
   it("throws DataUnavailableError when the window predates 2026-01-01, without calling the API", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
