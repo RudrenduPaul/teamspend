@@ -95,6 +95,97 @@ describe("fetchCursorSpend", () => {
     expect(result.users).toHaveLength(1);
   });
 
+  it("flags a user with real activity but $0 reported cost as estimated, and flips the result to estimated", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          users: [
+            {
+              user_id: "u1",
+              email: "flat-seat@x.com",
+              input_tokens: 50000,
+              output_tokens: 12000,
+              cache_read_tokens: 0,
+              cache_write_tokens: 0,
+              requests: 25,
+              cost_usd: 0,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await fetchCursorSpend(
+      { start: "2026-04-01", end: "2026-04-05" },
+      "test-key",
+    );
+
+    expect(result.users).toHaveLength(1);
+    expect(result.users[0]?.isEstimated).toBe(true);
+    expect(result.isEstimated).toBe(true);
+  });
+
+  it("keeps isEstimated false for a genuinely inactive user with zero tokens/requests and $0 cost", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          users: [
+            {
+              user_id: "u1",
+              email: "inactive@x.com",
+              input_tokens: 0,
+              output_tokens: 0,
+              cache_read_tokens: 0,
+              cache_write_tokens: 0,
+              requests: 0,
+              cost_usd: 0,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await fetchCursorSpend(
+      { start: "2026-04-01", end: "2026-04-05" },
+      "test-key",
+    );
+
+    expect(result.users[0]?.isEstimated).toBe(false);
+    expect(result.isEstimated).toBe(false);
+  });
+
+  it("leaves a normal nonzero-cost user unaffected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          users: [
+            {
+              user_id: "u1",
+              email: "normal@x.com",
+              input_tokens: 50000,
+              output_tokens: 12000,
+              cache_read_tokens: 0,
+              cache_write_tokens: 0,
+              requests: 25,
+              cost_usd: 42.5,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await fetchCursorSpend(
+      { start: "2026-04-01", end: "2026-04-05" },
+      "test-key",
+    );
+
+    expect(result.users[0]?.isEstimated).toBe(false);
+    expect(result.isEstimated).toBe(false);
+  });
+
   it("fails the entire call if any chunk fails after retries, never silently summing partial pages", async () => {
     vi.useFakeTimers();
     const fetchMock = vi
