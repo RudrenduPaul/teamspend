@@ -31,6 +31,7 @@ More teams are running more than one AI coding tool at once, or moving between t
 - [Roadmap](#roadmap)
 - [Good to know before you run it](#good-to-know-before-you-run-it)
 - [What is teamspend, and why does it exist](#what-is-teamspend-and-why-does-it-exist)
+- [How teamspend compares](#how-teamspend-compares)
 - [FAQ](#faq)
 - [Contributing](#contributing)
 - [Success stories](#success-stories)
@@ -126,6 +127,24 @@ teamspend is a command-line tool that answers one question: **when a team moves 
 It exists because no vendor's dashboard can answer that question, structurally. Cursor's Admin API reports Cursor spend. Anthropic's Claude Enterprise Analytics API reports Claude Code spend. Neither has a reason to show a competitor's number next to its own, so a team mid-migration is left opening two dashboards and doing the subtraction by hand. teamspend does the same thing a `diff` does for two files: it pulls both sides through the same normalized schema and prints one honest delta.
 
 It is deliberately narrow. teamspend does not run continuously, does not host a dashboard, and does not track more than a before/after window for two tools at a time (Cursor and Claude Code, in v0.1). It is a single command that answers a single question and exits.
+
+## How teamspend compares
+
+This is a narrow tool built for one specific job. It is not trying to replace the two projects below, and if what you actually need is what they do well, use them instead.
+
+| | teamspend | [tokscale](https://github.com/junhoyeo/tokscale) | [Vantage](https://www.vantage.sh) |
+|---|---|---|---|
+| What it answers | "What did our team's spend change by, across a migration between two tools?" | "How much have I personally used across 40+ coding-agent CLIs?" | "What is my org spending across cloud, SaaS, and AI, all in one console?" |
+| Audience | The person who has to answer for a team's AI tool bill | An individual developer tracking their own usage | A funded platform team consolidating multi-cloud cost |
+| Cursor + Claude Code cost data | Yes, via each vendor's own Admin API | Yes, via 40+ tool integrations including Cursor and Claude Code | Yes, both ship as live connectors on Vantage's own site |
+| Team budget / before-after migration view | Yes, this is the entire product | Not requested by its own community as of this writing | Not migration-specific; broader cost-allocation platform |
+| Scale and backing | New, single-purpose OSS project | 4,400+ stars, 425 forks, MIT-licensed, actively maintained | $25M raised (seed + Series A), commercial platform |
+
+**[tokscale](https://github.com/junhoyeo/tokscale)** is a genuinely good project: 4,400+ stars, tracks personal token usage across 40+ coding-agent tools with a leaderboard and contribution graph. Checking its last 100 issues turns up zero requests for team budgets, manager dashboards, or spend rollups, because that's not the product it's building. If what you want is a personal usage tracker across every AI CLI you use, use tokscale. teamspend exists for a different question, the one a team's budget owner asks, not the one an individual contributor asks.
+
+**[Vantage](https://www.vantage.sh)** already ships live Cursor and Anthropic connectors as part of a broader cloud/SaaS/AI cost platform. If you're already consolidating your full cloud bill through Vantage, it's a solid choice and covers more ground than teamspend ever will. teamspend is for the narrower case: a lightweight, single-purpose tool for one migration decision, without adopting a full cost-management platform to get there.
+
+**Cursor's, Claude Code's, and Copilot's own admin consoles** are each accurate for their own tool. Use them if you only run one. teamspend exists for the moment you're comparing two, because none of them will ever put a competitor's number in the same view as their own.
 
 ## FAQ
 
