@@ -1,6 +1,6 @@
 {
   "name": "teamspend",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "See what your team actually spends on AI coding tools across a migration, in one comparison.",
   "type": "module",
   "bin": {
