@@ -30,6 +30,7 @@ describe("run (CLI validation)", () => {
 
   it("rejects an unknown tool name", async () => {
     const code = await run([
+      "snapshot",
       "--tools",
       "cursor,unknown-tool",
       "--before",
@@ -45,6 +46,7 @@ describe("run (CLI validation)", () => {
 
   it("rejects a malformed date", async () => {
     const code = await run([
+      "snapshot",
       "--tools",
       "cursor,claude-code",
       "--before",
@@ -60,6 +62,7 @@ describe("run (CLI validation)", () => {
 
   it("rejects --before later than or equal to --after", async () => {
     const code = await run([
+      "snapshot",
       "--tools",
       "cursor,claude-code",
       "--before",
@@ -73,11 +76,41 @@ describe("run (CLI validation)", () => {
     );
   });
 
-  it("shows usage text when required flags are missing", async () => {
+  it("shows usage text when invoked with no arguments at all", async () => {
     const code = await run([]);
     expect(code).toBe(1);
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("Usage: teamspend snapshot"),
+    );
+  });
+
+  it("shows usage text when the snapshot subcommand is missing required flags", async () => {
+    const code = await run(["snapshot"]);
+    expect(code).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Usage: teamspend snapshot"),
+    );
+  });
+
+  it("prints full help and exits 0 for `teamspend --help`", async () => {
+    const logSpy = vi.spyOn(console, "log");
+    const code = await run(["--help"]);
+    expect(code).toBe(0);
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Commands:"));
+  });
+
+  it("prints full help and exits 0 for `teamspend snapshot --help`", async () => {
+    const logSpy = vi.spyOn(console, "log");
+    const code = await run(["snapshot", "--help"]);
+    expect(code).toBe(0);
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Commands:"));
+  });
+
+  it("rejects an unknown subcommand with a clear error naming the only real one", async () => {
+    const code = await run(["bogus-command"]);
+    expect(code).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Unknown command "bogus-command"'),
     );
   });
 
@@ -106,6 +139,7 @@ describe("run (CLI validation)", () => {
     );
 
     const code = await run([
+      "snapshot",
       "--tools",
       "cursor,claude-code",
       "--before",
