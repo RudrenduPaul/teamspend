@@ -8,7 +8,7 @@
 
 **Your AI coding tools will never tell you if switching between them actually saved money. teamspend does, in one command.**
 
-    npx teamspend snapshot --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+    npx teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 <!-- TODO: record a real terminal capture (asciinema or a short GIF) of the command above
      against a real Cursor + Claude Code org and embed it here. Capture script:
@@ -39,7 +39,7 @@ More teams are running more than one AI coding tool at once, or moving between t
 
 ## See it in action
 
-    npx teamspend snapshot --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+    npx teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 Example output (shape shown below; your real numbers come from your own org's API data):
 
@@ -81,7 +81,7 @@ Give it the two API keys for the tools you're comparing:
 
 Both need org-admin-level access on their platform. If you can already see billing for your org, you have what you need.
 
-    teamspend snapshot --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+    teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 ## Built to be trusted, not just used
 
@@ -101,7 +101,7 @@ A tool that touches your team's spend and email data should earn that trust in t
     date,user_email,cost_usd,is_estimated
     2025-11-01,jane@example.com,12.50,false
 
-    npx teamspend snapshot --tools cursor,claude-code --before 2025-11-01:2025-11-30 --after 2026-06-01:2026-06-30 --before-csv ./before.csv
+    npx teamspend --tools cursor,claude-code --before 2025-11-01:2025-11-30 --after 2026-06-01:2026-06-30 --before-csv ./before.csv
 
 ## Roadmap
 
