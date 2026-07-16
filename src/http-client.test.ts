@@ -95,7 +95,7 @@ describe("fetchWithRetry", () => {
     await assertion;
   });
 
-  it("passes an AbortSignal so a stalled connection cannot hang forever ([redacted] fix)", async () => {
+  it("passes an AbortSignal so a stalled connection cannot hang forever", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { ok: true }));
     vi.stubGlobal("fetch", fetchMock);
 
