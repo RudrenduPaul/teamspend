@@ -41,8 +41,7 @@ export async function fetchWithRetry(
       // Without a signal, a stalled connection (a slow proxy, a degraded but
       // not erroring admin API) never settles and this await never resolves
       // or rejects, so none of the retry/backoff logic below ever engages
-      // and the process hangs indefinitely (found during the CSO security
-      // review). AbortSignal.timeout rejects with a DOMException, which
+      // and the process hangs indefinitely. AbortSignal.timeout rejects with a DOMException, which
       // falls through to the generic catch block below and is correctly
       // treated as the existing "timeout" failure kind.
       const response = await fetch(url, {
