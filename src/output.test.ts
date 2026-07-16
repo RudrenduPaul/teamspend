@@ -74,7 +74,7 @@ describe("writeJsonReport and scaffoldGitignore", () => {
     expect(contents.deltaUsd).toBe(30);
   });
 
-  it("restricts the report file to owner read/write only ([redacted] fix, per-user data must not be world/group readable)", async () => {
+  it("restricts the report file to owner read/write only (per-user data must not be world/group readable)", async () => {
     tmpDir = await mkdtemp(path.join(tmpdir(), "teamspend-test-"));
     const before: PeriodOutcome = {
       label: "before",
