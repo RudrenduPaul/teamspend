@@ -19,6 +19,6 @@ jobs:
             exit 1
           fi
           if git grep -IniE 'CEO review|office[- ]hours|eng[- ]review|devex[- ]?review|CSO (security |threat[- ]model)|CSO review|strategy doc|moat schema|fundrais(e|ing)|investor[- ]outreach|Show HN draft|hype[- ]seed(ing)?|viability score|WOUNDED|/plan-eng-review|/review finding|Reviewer Concern' -- . ':!.github/workflows/no-internal-docs.yml'; then
-            echo "Internal-process phrase found in tracked content -- see oss-0-security-no-internal-docs skill's leak taxonomy." >&2
+            echo "Internal-process phrase found in tracked content -- this content must not be committed to a public repo." >&2
             exit 1
           fi
