@@ -101,7 +101,7 @@ export async function writeJsonReport(
   // mode: 0o600 restricts the file to owner read/write only. Without it,
   // Node's default (0o666 masked by the process umask, typically 0o644)
   // leaves per-user email + spend readable by any other local user on a
-  // shared host (found during the [redacted ]review).
+  // shared host.
   await writeFile(path, JSON.stringify(report, null, 2), { mode: 0o600 });
   return path;
 }
