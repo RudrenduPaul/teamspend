@@ -101,7 +101,7 @@ describe("importFromCSV", () => {
     }
   });
 
-  it("strips ANSI/control-character escape sequences from a CSV cell ([redacted] fix)", async () => {
+  it("strips ANSI/control-character escape sequences from a CSV cell", async () => {
     const tmpPath = fileURLToPath(
       new URL("../../fixtures/tmp-ansi-injection.csv", import.meta.url),
     );
