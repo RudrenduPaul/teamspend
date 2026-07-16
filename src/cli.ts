@@ -151,8 +151,7 @@ export async function run(argv: string[]): Promise<number> {
     // .gitignore entry protects the on-disk file, but does nothing about
     // this same per-user email + spend data being printed to stdout, which
     // lands in CI build logs (often world-readable for public repos) if
-    // this command is wired into a scheduled workflow (found during the
-    // [redacted ]review).
+    // this command is wired into a scheduled workflow.
     console.error(
       "Note: this output includes per-user email and spend data. If running in CI, confirm build logs are private.",
     );
