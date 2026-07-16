@@ -21,8 +21,7 @@ interface CSVRow {
  * Strips C0 control characters (0x00-0x1f), including ANSI/OSC terminal
  * escape sequences, from a CSV cell value. Without this, a crafted
  * user_email in an imported CSV could inject escape codes into the
- * non-JSON terminal summary output (found during the [redacted ]review) -
- * JSON.stringify already escapes these, so this only matters for the
+ * non-JSON terminal summary output - JSON.stringify already escapes these, so this only matters for the
  * human-readable render path, but stripping at parse time protects every
  * consumer, not just that one.
  */
