@@ -1,0 +1,24 @@
+name: No internal docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Fail if internal-only files or phrases are present
+        run: |
+          set -e
+          if git ls-files | grep -iE '^(CLAUDE\.md|TODOS\.md|BRANCH_PROTECTION\.md|docs/branch-protection\.md|docs/security-review-.*\.md)$'; then
+            echo "Internal-only file(s) found in tracked files -- these must never be committed to this public repo." >&2
+            exit 1
+          fi
+          if git grep -IniE 'CEO review|office[- ]hours|eng[- ]review|devex[- ]?review|CSO (security |threat[- ]model)|CSO review|strategy doc|moat schema|fundrais(e|ing)|investor[- ]outreach|Show HN draft|hype[- ]seed(ing)?|viability score|WOUNDED|/plan-eng-review|/review finding|Reviewer Concern' -- . ':!.github/workflows/no-internal-docs.yml'; then
+            echo "Internal-process phrase found in tracked content -- see oss-0-security-no-internal-docs skill's leak taxonomy." >&2
+            exit 1
+          fi

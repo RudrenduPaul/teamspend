@@ -1,0 +1,3 @@
+# CI/CD and workflow files are the highest-leverage target for a supply-chain
+# compromise, so any change to them requires review before merge.
+/.github/workflows/ @RudrenduPaul
