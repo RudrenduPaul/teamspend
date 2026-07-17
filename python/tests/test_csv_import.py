@@ -46,6 +46,18 @@ def test_raises_csv_row_error_instead_of_silently_producing_nan_for_a_malformed_
         import_from_csv(str(csv_path), "cursor", DateWindow("2025-11-01", "2025-11-30"))
 
 
+@pytest.mark.parametrize("cost_value", ["inf", "Infinity", "-inf", "nan", "NaN"])
+def test_raises_csv_row_error_instead_of_silently_propagating_inf_or_nan_cost(
+    tmp_path, cost_value
+):
+    csv_path = tmp_path / "inf-nan-cost.csv"
+    csv_path.write_text(
+        f"date,user_email,cost_usd,is_estimated\n2025-11-01,a@x.com,{cost_value},false\n"
+    )
+    with pytest.raises(CSVRowError):
+        import_from_csv(str(csv_path), "cursor", DateWindow("2025-11-01", "2025-11-30"))
+
+
 def test_raises_csv_row_error_for_an_empty_user_email(tmp_path):
     csv_path = tmp_path / "bad-email.csv"
     csv_path.write_text("date,user_email,cost_usd,is_estimated\n2025-11-01,,12.50,false\n")
