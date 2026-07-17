@@ -1,0 +1,4 @@
+date,user_email,cost_usd,is_estimated
+2025-11-01,r.chen@acme-corp.com,12.50,false
+2025-11-02,r.chen@acme-corp.com,14.10,false
+2025-11-01,j.kim@acme-corp.com,9.80,true

@@ -1,6 +1,7 @@
 # teamspend
 
 [![npm version](https://img.shields.io/npm/v/teamspend.svg)](https://www.npmjs.com/package/teamspend)
+[![PyPI version](https://img.shields.io/pypi/v/teamspend.svg)](https://pypi.org/project/teamspend/)
 [![CI](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.3.0-brightgreen.svg)](package.json)
@@ -72,7 +73,16 @@ That's the whole product. One command, one honest number, zero spreadsheets.
 
 ## Get started in under a minute
 
+teamspend ships two independent, equally first-class packages -- pick
+whichever fits your toolchain, or install both. Neither is deprecated in
+favor of the other; they talk to the same two admin APIs and compute the
+same before/after delta.
+
+    # npm -- JavaScript/TypeScript CLI + library
     npm install -g teamspend
+
+    # PyPI -- Python CLI + library (genuine port, not a wrapper around the Node binary)
+    pip install teamspend
 
 Give it the two API keys for the tools you're comparing:
 
@@ -82,6 +92,11 @@ Give it the two API keys for the tools you're comparing:
 Both need org-admin-level access on their platform. If you can already see billing for your org, you have what you need.
 
     teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+
+Both CLIs accept identical flags and print the same output shape. See
+[python/README.md](./python/README.md) for the Python package's library API
+and [docs/getting-started.md](./docs/getting-started.md) for the full guide
+covering both distributions.
 
 ## Built to be trusted, not just used
 
@@ -165,13 +180,19 @@ Some billing tiers (flat-seat Cursor plans, Claude.ai Team/Enterprise seats) don
 
 ## Contributing
 
-Found a rough edge, a vendor API that shifted shape, or a tool you wish this supported? Open an issue or a pull request. The codebase is small on purpose, so a fix or a new adapter is usually a smaller change than it looks.
+Found a rough edge, a vendor API that shifted shape, or a tool you wish this supported? Open an issue or a pull request. The codebase is small on purpose, so a fix or a new adapter is usually a smaller change than it looks. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full guide covering both the npm (TypeScript) and PyPI (Python, `python/`) packages -- an adapter change should land in both.
 
+    # TypeScript (repo root)
     npm install
     npm run build
     npm run lint
     npm run typecheck
     npm test
+
+    # Python (python/)
+    cd python
+    pip install -e ".[dev]"
+    pytest
 
 If teamspend saved you from opening two dashboards and doing math by hand, a star helps other people with the same problem find it.
 
