@@ -8,18 +8,19 @@ import {
   scaffoldGitignore,
 } from "./output.js";
 import { buildComparison, type PeriodOutcome } from "./compare.js";
-import type { AdapterResult } from "./schema.js";
+import type { AdapterResult, UserUsage } from "./schema.js";
 
 function makeResult(
   source: "cursor" | "claude-code",
   totalCostUsd: number,
+  users: UserUsage[] = [],
 ): AdapterResult {
   return {
     source,
     window: { start: "2026-01-01", end: "2026-01-31" },
     totalCostUsd,
     isEstimated: false,
-    users: [],
+    users,
   };
 }
 
@@ -42,6 +43,37 @@ describe("renderTerminalSummary", () => {
     const output = renderTerminalSummary(report);
     expect(output).toContain("DATA UNAVAILABLE: auth failed");
     expect(output).toContain("DELTA: unavailable");
+  });
+
+  it("strips control characters from a userEmail sourced from the live API, not just CSV import", () => {
+    const maliciousUser: UserUsage = {
+      userId: "u_evil",
+      userEmail: "\x1b[31mevil@x.com",
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheWriteTokens: null,
+      requests: null,
+      costUsd: 999,
+      isEstimated: false,
+    };
+    const before: PeriodOutcome = {
+      label: "before",
+      tool: "cursor",
+      result: makeResult("cursor", 999, [maliciousUser]),
+      error: null,
+    };
+    const after: PeriodOutcome = {
+      label: "after",
+      tool: "claude-code",
+      result: makeResult("claude-code", 0),
+      error: null,
+    };
+    const report = buildComparison(before, after);
+
+    const output = renderTerminalSummary(report);
+    expect(output).not.toContain("\x1b");
+    expect(output).toContain("evil@x.com");
   });
 });
 
