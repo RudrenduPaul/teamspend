@@ -6,6 +6,26 @@ JS/TS) and the PyPI package (`teamspend`, Python) -- since they talk to
 the same two admin APIs and compute the same before/after delta; entries
 note which distribution they apply to.
 
+## [Python 0.1.1] - 2026-07-16
+
+Docs-only patch release for the Python distribution. No source or
+behavior changes.
+
+### Changed
+
+- `python/README.md`: added a "How it works" section (concurrency and
+  failure isolation between the before/after fetches, the retry/backoff
+  policy, Cursor's 30-day-chunk pagination, the Claude Code
+  2026-01-01 Analytics API start-date guard, suspicious-zero estimation,
+  and how `build_comparison()` derives the delta and top spenders) and a
+  "Security" section (which credentials teamspend reads and how, the CSV
+  control-character stripping, the JSON report's `0600` file
+  permissions, what's out of scope, and a pointer to
+  [SECURITY.md](https://github.com/RudrenduPaul/teamspend/blob/main/SECURITY.md)
+  for vulnerability reporting), bringing it to the same depth as the
+  other Python ports in this batch (e.g. `skillguard-cli`,
+  `auditreach-cli`).
+
 ## [Python 0.1.0] - 2026-07-16
 
 Initial public release of the Python port, published to PyPI as

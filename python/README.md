@@ -114,6 +114,68 @@ Both return the same shape of normalized data (`total_cost_usd`/
 [docs/concepts.md](https://github.com/RudrenduPaul/teamspend/blob/main/docs/concepts.md)
 for the full data model.
 
+## How it works
+
+```
+CLI flags / env vars
+  -> two adapters run concurrently (ThreadPoolExecutor, 2 workers)
+       - Cursor: 30-day-chunk pagination against api.cursor.com/admin/usage, summed per user
+       - Claude Code: single call to api.anthropic.com .../usage_report/claude_code
+                       (guarded: no data before 2026-01-01)
+  -> each field read from a response is validated (require_field) --
+       missing field raises SchemaDriftError, never a silent guess
+  -> suspicious-zero detection: real token/request activity + cost 0
+       -> that user, and the whole side, is marked isEstimated
+  -> build_comparison(): before/after -> delta_usd, delta_percent,
+       top 5 spenders across both periods
+  -> terminal summary + JSON report (0600 file perms) written to cwd
+```
+
+**Concurrency and failure isolation.** `cli.py`'s `run()` submits the
+before and after fetches to a 2-worker `ThreadPoolExecutor` and resolves
+each `Future` independently, catching any exception per side into a
+`PeriodOutcome(result=None, error=...)` rather than letting one side's
+failure abort the other -- mirroring the TypeScript CLI's
+`Promise.allSettled`. Exit code `0` requires both sides to have a
+`result`; either side without one returns exit code `1`.
+
+**Retry/backoff.** Every adapter call goes through `http_client.py`'s
+`fetch_with_retry`, which retries HTTP 429 and 5xx responses up to 3
+times with exponential backoff (0.5s base, doubling), raises
+`AuthenticationError` immediately -- never retried -- on 401/403, and
+raises `RetryExhaustedError` once the retry budget is spent. The real
+network call sits behind a swappable `transport` function (`urllib` in
+production), which is how the pytest suite simulates arbitrary HTTP
+statuses without opening a real socket.
+
+**Cursor pagination.** The Cursor Admin API caps each call's window at 30
+days, so `adapters/cursor.py`'s `_split_into_chunks` breaks any longer
+`--before`/`--after` window into consecutive 30-day chunks, fetches each
+one, and sums the result per `user_id`. If any chunk fails after retries
+are exhausted, the entire fetch fails -- it never reports a total built
+from only the chunks that happened to succeed.
+
+**Claude Code start-date guard.** Anthropic's Claude Enterprise Analytics
+API has no data before 2026-01-01. `adapters/claude_code.py` checks the
+requested window's start date before making any request and raises
+`DataUnavailableError` if it predates that date; the CLI then falls back
+to `--before-csv`/`--after-csv` for that side if one was passed, or
+surfaces the error as that side's `PeriodOutcome.error` otherwise.
+
+**Suspicious-zero detection.** Cursor plans without usage overage, and
+Claude.ai Team/Enterprise seats, report a technically valid `cost_usd`/
+`spend_usd` of exactly 0 for a user who clearly has real token or request
+activity. Both adapters check for that specific combination and mark that
+user -- and the whole side's `is_estimated` flag -- as estimated, so the
+output never shows a misleading exact-looking $0 next to genuine usage.
+
+**The comparison itself.** `compare.py`'s `build_comparison()` takes two
+independently-resolved `PeriodOutcome`s. `delta_usd` and `delta_percent`
+are computed only when both sides have a `result`; otherwise they're
+`None` and the terminal output prints `DELTA: unavailable`. It also
+collects the top 5 spenders from each side, merges and re-sorts them by
+cost, and keeps the top 5 across both periods combined.
+
 ## CSV import, for the history a live API can't reach
 
 ```bash
@@ -145,6 +207,54 @@ day. Rows are aggregated per `user_email`.
   starts earlier raises `DataUnavailableError` and, if `--before-csv`/
   `--after-csv` was passed, falls back to the CSV import path for that
   side automatically.
+
+## Security
+
+teamspend needs org-admin-level credentials for the tools it queries --
+`TEAMSPEND_CURSOR_TOKEN` (Cursor Admin API) and/or
+`TEAMSPEND_CLAUDE_CODE_TOKEN` (Anthropic's Claude Enterprise Analytics
+API) -- read only from environment variables via `os.environ.get()` in
+`cli.py`'s `_fetch_tool()`. Neither is ever hardcoded, persisted to disk,
+or included in the JSON report or terminal output. A 401/403 from either
+vendor's API raises `AuthenticationError` naming which environment
+variable to check; the credential value itself never appears in that
+message, a log line, or a traceback.
+
+The one other untrusted input this package reads is an imported CSV file
+(`--before-csv`/`--after-csv`): `adapters/csv_import.py` strips C0
+control characters (`\x00`-`\x1f`) from every cell before it can reach
+the terminal summary, closing a terminal/ANSI-escape-injection path a
+crafted `user_email` or `cost_usd` cell could otherwise open. Nothing
+read from an API response or a CSV file is ever passed to `eval`, `exec`,
+or a shell -- both adapters and the CSV importer only parse and validate
+(`require_field` in `http_client.py` raises `SchemaDriftError` rather
+than guessing when a vendor field is missing).
+
+The JSON report file (`teamspend-snapshot-*.json`) contains real per-user
+emails and dollar amounts, so `output.py` writes it with `0600`
+(owner-read/write-only) permissions via `os.open(..., O_CREAT |
+O_WRONLY, 0o600)` -- avoiding the umask-then-chmod race a separate
+`chmod` call after write would leave open -- and the CLI auto-scaffolds a
+`.gitignore` entry for that file pattern on first run.
+
+**What's out of scope**: the accuracy of a vendor's own admin-API
+response (a wrong number from Cursor's or Anthropic's API is a report for
+that vendor, not teamspend), and findings that assume a credential has
+already been put somewhere insecure by the user (a committed `.env` file,
+a world-readable shell history) -- teamspend reads credentials only from
+environment variables it does not set or persist itself.
+
+To report a vulnerability, use
+[GitHub Security Advisories](https://github.com/RudrenduPaul/teamspend/security/advisories/new)
+rather than a public issue -- see
+[SECURITY.md](https://github.com/RudrenduPaul/teamspend/blob/main/SECURITY.md)
+for the full policy and response timeline. **Honest note**: this project
+does not currently publish SLSA provenance, Sigstore signatures, or an
+SBOM, and has no OpenSSF Scorecard badge set up -- none of that
+infrastructure exists yet for either distribution, so it isn't claimed
+here. Both distributions have zero runtime dependencies (this package
+uses only `urllib` from the standard library), so there is no
+third-party HTTP client to audit in the request path.
 
 ## Development
 
