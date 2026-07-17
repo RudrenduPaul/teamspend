@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "teamspend"
+version = "0.1.0"
+description = "Compare AI coding tool spend before and after a migration -- Cursor vs Claude Code, real numbers pulled from each vendor's own admin API, one command, zero runtime dependencies."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+authors = [
+  { name = "Rudrendu Paul" },
+  { name = "Sourav Nandy" },
+]
+keywords = ["cli", "ai-coding-agents", "cost", "finops", "cursor", "claude-code"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Office/Business :: Financial",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Utilities",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0,<9",
+  "build>=1.0,<2",
+  "twine>=5.0,<7",
+]
+
+[project.urls]
+Homepage = "https://github.com/RudrenduPaul/teamspend"
+Repository = "https://github.com/RudrenduPaul/teamspend"
+"Bug Tracker" = "https://github.com/RudrenduPaul/teamspend/issues"
+Changelog = "https://github.com/RudrenduPaul/teamspend/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/RudrenduPaul/teamspend/blob/main/docs/getting-started.md"
+"Author - Rudrendu Paul" = "https://github.com/RudrenduPaul"
+"Author - Sourav Nandy" = "https://github.com/Sourav-nandy-ai"
+
+[project.scripts]
+teamspend = "teamspend.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/teamspend"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/teamspend",
+  "tests",
+  "README.md",
+  "LICENSE",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

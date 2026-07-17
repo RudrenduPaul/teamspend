@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "user_id": "u_101",
+      "email": "s.patel@acme-corp.com",
+      "input_tokens": 210000,
+      "output_tokens": 62000,
+      "cache_read_tokens": 15000,
+      "cache_write_tokens": 4000,
+      "spend_usd": 288.9
+    },
+    {
+      "user_id": "u_102",
+      "email": "m.diaz@acme-corp.com",
+      "input_tokens": 140000,
+      "output_tokens": 38000,
+      "cache_read_tokens": 9000,
+      "cache_write_tokens": 2500,
+      "spend_usd": 198.25
+    }
+  ]
+}

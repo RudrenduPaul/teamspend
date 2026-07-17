@@ -1,0 +1,24 @@
+{
+  "users": [
+    {
+      "user_id": "u_001",
+      "email": "r.chen@acme-corp.com",
+      "input_tokens": 120000,
+      "output_tokens": 45000,
+      "cache_read_tokens": 8000,
+      "cache_write_tokens": 2000,
+      "requests": 340,
+      "cost_usd": 156.2
+    },
+    {
+      "user_id": "u_002",
+      "email": "j.kim@acme-corp.com",
+      "input_tokens": 98000,
+      "output_tokens": 31000,
+      "cache_read_tokens": 5000,
+      "cache_write_tokens": 1500,
+      "requests": 210,
+      "cost_usd": 84.1
+    }
+  ]
+}
