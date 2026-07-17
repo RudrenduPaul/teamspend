@@ -1,3 +1,7 @@
-# CI/CD and workflow files are the highest-leverage target for a supply-chain
-# compromise, so any change to them requires review before merge.
+# CI/CD, workflow files, and dependency manifests are the highest-leverage
+# targets for a supply-chain compromise, so any change to them requires
+# review before merge.
 /.github/workflows/ @RudrenduPaul
+/package.json @RudrenduPaul
+/package-lock.json @RudrenduPaul
+/python/pyproject.toml @RudrenduPaul
