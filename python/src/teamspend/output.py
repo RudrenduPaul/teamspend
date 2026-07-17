@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,6 +50,22 @@ def _format_usd(amount: float) -> str:
     return f"${amount:.2f}"
 
 
+_CONTROL_CHAR_PATTERN = re.compile("[\x00-\x1f]")
+
+
+def _strip_control_chars(value: str) -> str:
+    """
+    Strips C0 control characters (0x00-0x1f), including ANSI/OSC terminal
+    escape sequences, before a value reaches the terminal. Mirrors
+    adapters/csv_import.py's _strip_control_chars, which only covered
+    CSV-sourced emails -- a live vendor-API response is exactly as
+    untrusted as an imported CSV cell, so the same sanitizer needs to
+    apply here too, at the point where any user_email actually gets
+    printed, regardless of which adapter produced it.
+    """
+    return _CONTROL_CHAR_PATTERN.sub("", value)
+
+
 def render_terminal_summary(report: ComparisonReport) -> str:
     lines = []
     lines.append("teamspend snapshot -- migration cost comparison")
@@ -87,7 +104,7 @@ def render_terminal_summary(report: ComparisonReport) -> str:
         lines.append("")
         lines.append("TOP SPENDERS (across both periods)")
         for i, spender in enumerate(report.top_spenders_across_both):
-            email = spender.user_email or "(unknown)"
+            email = _strip_control_chars(spender.user_email) if spender.user_email else "(unknown)"
             lines.append(
                 f"  {i + 1}. {email}     {spender.period}      {_format_usd(spender.cost_usd)}"
             )

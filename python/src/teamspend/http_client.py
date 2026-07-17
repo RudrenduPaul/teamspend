@@ -19,6 +19,7 @@ from __future__ import annotations
 import json as json_module
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Sequence
@@ -51,16 +52,50 @@ class TransportError(Exception):
 Transport = Callable[[str, Dict[str, str], float], HttpResponse]
 
 
+class _SameHostRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """
+    Refuses to follow a redirect to a different host. `urllib`'s default
+    HTTPRedirectHandler forwards every original request header -- including
+    Authorization -- to whatever host a 3xx Location points to, unlike the
+    `requests` library, which strips auth headers on cross-origin redirects.
+    Both admin-API base URLs are hardcoded HTTPS constants, so there is no
+    legitimate reason for a redirect to ever change host; treating one as a
+    hard failure closes off a compromised/misconfigured-upstream or MITM path
+    to exfiltrating the admin-API token via a redirect response.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001, ANN201 -- overriding stdlib signature
+        original_host = urllib.parse.urlsplit(req.full_url).netloc
+        new_host = urllib.parse.urlsplit(newurl).netloc
+        if new_host != original_host:
+            raise urllib.error.HTTPError(
+                newurl,
+                code,
+                f"refusing to follow cross-host redirect from {original_host} to {new_host}",
+                headers,
+                fp,
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_SameHostRedirectHandler)
+
+
 def default_transport(url: str, headers: Dict[str, str], timeout: float) -> HttpResponse:
     """Real network transport. GET only -- every teamspend admin-API call is a GET."""
     request = urllib.request.Request(url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 -- fixed https:// admin-API URLs built from constants, never from unsanitized input
+        with _opener.open(request, timeout=timeout) as response:  # noqa: S310 -- fixed https:// admin-API URLs built from constants, never from unsanitized input
             return HttpResponse(status=response.status, body=response.read())
     except urllib.error.HTTPError as error:
         # HTTPError already carries the response body/status for non-2xx --
         # treat it as a normal (non-2xx) HttpResponse so the retry/auth
-        # logic below can inspect the status code uniformly.
+        # logic below can inspect the status code uniformly. This also
+        # catches the cross-host-redirect refusal raised above, which
+        # surfaces to the caller as an ordinary non-2xx/non-retryable status
+        # (it isn't 401/403/429/5xx, so it falls through to the "unexpected
+        # status" RuntimeError in fetch_with_retry) rather than as a
+        # TransportError silently retried into a timeout.
         return HttpResponse(status=error.code, body=error.read())
     except (urllib.error.URLError, TimeoutError, OSError) as error:
         raise TransportError(str(error)) from error

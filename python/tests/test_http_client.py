@@ -1,7 +1,15 @@
+import urllib.error
+import urllib.request
+
 import pytest
 
 from teamspend.errors import AuthenticationError, RetryExhaustedError, SchemaDriftError
-from teamspend.http_client import TransportError, fetch_with_retry, require_field
+from teamspend.http_client import (
+    TransportError,
+    _SameHostRedirectHandler,
+    fetch_with_retry,
+    require_field,
+)
 
 from .conftest import ScriptedTransport, json_response
 
@@ -102,3 +110,21 @@ def test_throws_schema_drift_error_when_neither_the_primary_field_nor_any_alias_
 def test_includes_the_tried_alias_names_in_the_error_message_when_aliases_were_passed():
     with pytest.raises(SchemaDriftError, match="month, date"):
         require_field({}, "period", "cursor", ["month", "date"])
+
+
+def test_same_host_redirect_handler_allows_a_redirect_that_stays_on_the_same_host():
+    handler = _SameHostRedirectHandler()
+    req = urllib.request.Request("https://api.cursor.com/v1/usage", method="GET")
+    new_req = handler.redirect_request(
+        req, fp=None, code=302, msg="Found", headers={}, newurl="https://api.cursor.com/v1/usage/2"
+    )
+    assert new_req.full_url == "https://api.cursor.com/v1/usage/2"
+
+
+def test_same_host_redirect_handler_refuses_a_redirect_to_a_different_host():
+    handler = _SameHostRedirectHandler()
+    req = urllib.request.Request("https://api.cursor.com/v1/usage", method="GET")
+    with pytest.raises(urllib.error.HTTPError, match="refusing to follow cross-host redirect"):
+        handler.redirect_request(
+            req, fp=None, code=302, msg="Found", headers={}, newurl="https://attacker.example/steal"
+        )

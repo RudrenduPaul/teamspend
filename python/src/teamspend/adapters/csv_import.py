@@ -12,6 +12,7 @@ quoting support that the npm CLI doesn't have either.
 """
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 from typing import Dict, List
@@ -87,6 +88,13 @@ def import_from_csv(csv_path: str, source: ToolId, window: DateWindow) -> Adapte
         try:
             cost = float(row["cost_usd"])
         except ValueError:
+            cost = None
+        # Python's float() parses "inf"/"-inf"/"nan" (case-insensitively) without
+        # raising -- unlike the TypeScript original's Number.parseFloat, which
+        # this repo's own Number.isFinite guard already rejects. A crafted
+        # cost_usd of "inf"/"nan" would otherwise silently corrupt any
+        # threshold comparison downstream (e.g. examples/02-ci-gate).
+        if cost is None or not math.isfinite(cost):
             raise CSVRowError(
                 row_number, f'cost_usd "{row["cost_usd"]}" is not a valid number'
             )

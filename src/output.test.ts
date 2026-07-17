@@ -43,6 +43,50 @@ describe("renderTerminalSummary", () => {
     expect(output).toContain("DATA UNAVAILABLE: auth failed");
     expect(output).toContain("DELTA: unavailable");
   });
+
+  it("strips control characters from a live-vendor-API userEmail before printing", () => {
+    const maliciousResult: AdapterResult = {
+      source: "cursor",
+      window: { start: "2026-01-01", end: "2026-01-31" },
+      totalCostUsd: 100,
+      isEstimated: false,
+      users: [
+        {
+          userId: "u1",
+          userEmail:
+            "evil\x1b[2J\x1b]8;;https://evil.example\x07spoofed\x07@x.com",
+          inputTokens: null,
+          outputTokens: null,
+          cacheReadTokens: null,
+          cacheWriteTokens: null,
+          requests: null,
+          costUsd: 100,
+          isEstimated: false,
+        },
+      ],
+    };
+    const before: PeriodOutcome = {
+      label: "before",
+      tool: "cursor",
+      result: maliciousResult,
+      error: null,
+    };
+    const after: PeriodOutcome = {
+      label: "after",
+      tool: "claude-code",
+      result: makeResult("claude-code", 50),
+      error: null,
+    };
+    const report = buildComparison(before, after);
+
+    const output = renderTerminalSummary(report);
+    const topSpendersLine = output
+      .split("\n")
+      .find((line) => line.includes("evil"));
+    expect(topSpendersLine).not.toMatch(/[\x00-\x1f]/);
+    expect(topSpendersLine).toContain("evil");
+    expect(topSpendersLine).toContain("spoofed");
+  });
 });
 
 describe("writeJsonReport and scaffoldGitignore", () => {

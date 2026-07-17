@@ -53,6 +53,18 @@ def test_raises_csv_row_error_for_an_empty_user_email(tmp_path):
         import_from_csv(str(csv_path), "cursor", DateWindow("2025-11-01", "2025-11-30"))
 
 
+@pytest.mark.parametrize("bad_cost", ["inf", "-inf", "Infinity", "nan", "NaN"])
+def test_raises_csv_row_error_for_a_non_finite_cost_python_float_would_otherwise_accept(
+    tmp_path, bad_cost
+):
+    csv_path = tmp_path / "non-finite-cost.csv"
+    csv_path.write_text(
+        f"date,user_email,cost_usd,is_estimated\n2025-11-01,a@x.com,{bad_cost},false\n"
+    )
+    with pytest.raises(CSVRowError):
+        import_from_csv(str(csv_path), "cursor", DateWindow("2025-11-01", "2025-11-30"))
+
+
 def test_strips_ansi_control_character_escape_sequences_from_a_csv_cell(tmp_path):
     csv_path = tmp_path / "ansi-injection.csv"
     # \x1b is ESC -- a crafted cell could otherwise inject terminal escape

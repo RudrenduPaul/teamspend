@@ -38,6 +38,19 @@ function formatUsd(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
+/**
+ * Strips C0 control characters (0x00-0x1f), including ANSI/OSC terminal
+ * escape sequences, before a value reaches the terminal. Mirrors
+ * adapters/csv-import.ts's stripControlChars, which only covered
+ * CSV-sourced emails -- a live vendor-API response is exactly as untrusted
+ * as an imported CSV cell, so the same sanitizer needs to apply here too,
+ * at the point where any userEmail actually gets printed, regardless of
+ * which adapter produced it.
+ */
+function stripControlChars(value: string): string {
+  return value.replace(/[\x00-\x1f]/g, "");
+}
+
 export function renderTerminalSummary(report: ComparisonReport): string {
   const lines: string[] = [];
   lines.push("teamspend snapshot -- migration cost comparison");
@@ -78,8 +91,9 @@ export function renderTerminalSummary(report: ComparisonReport): string {
     lines.push("");
     lines.push("TOP SPENDERS (across both periods)");
     report.topSpendersAcrossBoth.forEach((s, i) => {
+      const email = s.userEmail ? stripControlChars(s.userEmail) : "(unknown)";
       lines.push(
-        `  ${i + 1}. ${s.userEmail ?? "(unknown)"}     ${s.period}      ${formatUsd(s.costUsd)}`,
+        `  ${i + 1}. ${email}     ${s.period}      ${formatUsd(s.costUsd)}`,
       );
     });
   }
