@@ -51,7 +51,12 @@ class _SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
             return None
         if urlsplit(req.full_url).netloc != urlsplit(newurl).netloc:
             for header in _SENSITIVE_HEADERS:
-                new_request.remove_header(header)
+                # Request.remove_header() does a raw dict .pop() with no case
+                # normalization, while add_header() stores keys via
+                # .capitalize() ("x-api-key" -> "X-api-key"). Passing the raw
+                # header name here silently no-ops for anything whose casing
+                # doesn't already match its capitalize()'d form.
+                new_request.remove_header(header.capitalize())
         return new_request
 
 
