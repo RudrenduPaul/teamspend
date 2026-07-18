@@ -27,7 +27,7 @@ from .adapters.opencode import fetch_opencode_spend
 from .compare import ComparisonReport, PeriodOutcome, build_comparison
 from .errors import DataUnavailableError, InvalidCliArgError
 from .output import render_terminal_summary, scaffold_gitignore, write_json_report
-from .types import AdapterResult, DateWindow, ToolId
+from .types import AdapterResult, BreakdownMode, DateWindow, ToolId
 
 KNOWN_TOOLS: List[ToolId] = [
     "cursor",
@@ -36,6 +36,7 @@ KNOWN_TOOLS: List[ToolId] = [
     "opencode",
     "claude-code-personal",
 ]
+KNOWN_BREAKDOWN_MODES: List[BreakdownMode] = ["session"]
 DATE_RANGE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$")
 _VERSION = "0.1.0"
 
@@ -68,6 +69,41 @@ def _validate_window_order(before: DateWindow, after: DateWindow) -> None:
         raise InvalidCliArgError(
             f"--before ({before.start}) must be earlier than --after ({after.start})"
         )
+
+
+def _parse_breakdown_mode(raw: Optional[str]) -> Optional[BreakdownMode]:
+    """
+    Parses --breakdown. Unset (None) is the default (no change from prior
+    behavior). A set-but-unrecognized value raises rather than silently
+    being ignored, since a typo like `--breakdown sessions` should surface
+    immediately instead of quietly reporting the plain flat total the
+    caller didn't ask for.
+    """
+    if raw is None:
+        return None
+    if raw in KNOWN_BREAKDOWN_MODES:
+        return raw  # type: ignore[return-value]
+    raise InvalidCliArgError(
+        f'--breakdown must be one of: {", ".join(KNOWN_BREAKDOWN_MODES)}, got "{raw}"'
+    )
+
+
+def _strip_sessions_unless_requested(
+    result: Optional[AdapterResult], breakdown: Optional[BreakdownMode]
+) -> Optional[AdapterResult]:
+    """
+    Removes per-session data from a fetched result when the caller didn't
+    ask for it via --breakdown session. Adapters populate `sessions`
+    whenever their underlying data has it, independent of any CLI flag;
+    stripping it back out here (rather than teaching every adapter about
+    the flag) is what keeps the default JSON report and terminal output
+    unchanged from before this feature existed.
+    """
+    if result is None or breakdown == "session":
+        return result
+    for user in result.users:
+        user.sessions = None
+    return result
 
 
 def _parse_copilot_seat_price() -> Optional[float]:
@@ -147,6 +183,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--json", action="store_true", default=False)
     parser.add_argument("--before-csv", dest="before_csv")
     parser.add_argument("--after-csv", dest="after_csv")
+    parser.add_argument("--breakdown")
     parser.add_argument("--version", action="store_true", default=False)
     parser.add_argument("-h", "--help", action="store_true", default=False)
     return parser
@@ -154,7 +191,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 _USAGE = (
     "Usage: teamspend --tools <a>,<b> --before YYYY-MM-DD:YYYY-MM-DD "
-    "--after YYYY-MM-DD:YYYY-MM-DD [--json] [--before-csv <path>] [--after-csv <path>]"
+    "--after YYYY-MM-DD:YYYY-MM-DD [--json] [--before-csv <path>] [--after-csv <path>] "
+    "[--breakdown session]"
 )
 
 
@@ -189,6 +227,7 @@ def run(argv: List[str]) -> int:
         before_window = _parse_date_range("before", args.before)
         after_window = _parse_date_range("after", args.after)
         _validate_window_order(before_window, after_window)
+        breakdown = _parse_breakdown_mode(args.breakdown)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             before_future = executor.submit(
@@ -213,10 +252,16 @@ def run(argv: List[str]) -> int:
                 after_error = error
 
         before = PeriodOutcome(
-            label="before", tool=before_tool, result=before_result, error=before_error
+            label="before",
+            tool=before_tool,
+            result=_strip_sessions_unless_requested(before_result, breakdown),
+            error=before_error,
         )
         after = PeriodOutcome(
-            label="after", tool=after_tool, result=after_result, error=after_error
+            label="after",
+            tool=after_tool,
+            result=_strip_sessions_unless_requested(after_result, breakdown),
+            error=after_error,
         )
 
         report: ComparisonReport = build_comparison(before, after)
@@ -249,7 +294,7 @@ def run(argv: List[str]) -> int:
 
             print(json_module.dumps(report_to_json_dict(report), indent=2))
         else:
-            print(render_terminal_summary(report))
+            print(render_terminal_summary(report, breakdown))
             print(f"\nFull report: {json_path}")
 
         return 0 if before.result and after.result else 1

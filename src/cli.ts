@@ -15,7 +15,7 @@ import {
   scaffoldGitignore,
 } from "./output.js";
 import { InvalidCliArgError, DataUnavailableError } from "./errors.js";
-import type { DateWindow, ToolId } from "./schema.js";
+import type { AdapterResult, BreakdownMode, DateWindow, ToolId } from "./schema.js";
 
 const KNOWN_TOOLS: ToolId[] = [
   "cursor",
@@ -59,6 +59,49 @@ function validateWindowOrder(before: DateWindow, after: DateWindow): void {
       `--before (${before.start}) must be earlier than --after (${after.start})`,
     );
   }
+}
+
+const KNOWN_BREAKDOWN_MODES: BreakdownMode[] = ["session"];
+
+/**
+ * Parses --breakdown. Unset is the default (no change from prior behavior).
+ * A set-but-unrecognized value throws rather than silently being ignored,
+ * since a typo like `--breakdown sessions` should surface immediately
+ * instead of quietly reporting the plain flat total the caller didn't ask
+ * for.
+ */
+function parseBreakdownMode(raw: string | undefined): BreakdownMode | undefined {
+  if (raw === undefined) return undefined;
+  if (KNOWN_BREAKDOWN_MODES.includes(raw as BreakdownMode)) {
+    return raw as BreakdownMode;
+  }
+  throw new InvalidCliArgError(
+    `--breakdown must be one of: ${KNOWN_BREAKDOWN_MODES.join(", ")}, got "${raw}"`,
+  );
+}
+
+/**
+ * Removes per-session data from a fetched result when the caller didn't ask
+ * for it via --breakdown session. Adapters populate `sessions` whenever
+ * their underlying data has it, independent of any CLI flag; stripping it
+ * back out here (rather than teaching every adapter about the flag) is what
+ * keeps the default JSON report and terminal output byte-for-byte unchanged
+ * from before this feature existed.
+ */
+function stripSessionsUnlessRequested(
+  result: AdapterResult | null,
+  breakdown: BreakdownMode | undefined,
+): AdapterResult | null {
+  if (!result || breakdown === "session") return result;
+  return {
+    ...result,
+    users: result.users.map((user) => {
+      if (user.sessions === undefined) return user;
+      const withoutSessions = { ...user };
+      delete withoutSessions.sessions;
+      return withoutSessions;
+    }),
+  };
 }
 
 /**
@@ -143,6 +186,7 @@ export async function run(argv: string[]): Promise<number> {
         json: { type: "boolean", default: false },
         "before-csv": { type: "string" },
         "after-csv": { type: "string" },
+        breakdown: { type: "string" },
       },
     });
   } catch (error) {
@@ -155,7 +199,7 @@ export async function run(argv: string[]): Promise<number> {
   try {
     if (!values.tools || !values.before || !values.after) {
       console.error(
-        "Usage: teamspend snapshot --tools <a>,<b> --before YYYY-MM-DD:YYYY-MM-DD --after YYYY-MM-DD:YYYY-MM-DD [--json] [--before-csv <path>] [--after-csv <path>]",
+        "Usage: teamspend snapshot --tools <a>,<b> --before YYYY-MM-DD:YYYY-MM-DD --after YYYY-MM-DD:YYYY-MM-DD [--json] [--before-csv <path>] [--after-csv <path>] [--breakdown session]",
       );
       return 1;
     }
@@ -164,6 +208,7 @@ export async function run(argv: string[]): Promise<number> {
     const beforeWindow = parseDateRange("before", values.before);
     const afterWindow = parseDateRange("after", values.after);
     validateWindowOrder(beforeWindow, afterWindow);
+    const breakdown = parseBreakdownMode(values.breakdown);
 
     const [beforeSettled, afterSettled] = await Promise.allSettled([
       fetchTool(beforeTool, beforeWindow, values["before-csv"]),
@@ -173,7 +218,10 @@ export async function run(argv: string[]): Promise<number> {
     const before: PeriodOutcome = {
       label: "before",
       tool: beforeTool,
-      result: beforeSettled.status === "fulfilled" ? beforeSettled.value : null,
+      result: stripSessionsUnlessRequested(
+        beforeSettled.status === "fulfilled" ? beforeSettled.value : null,
+        breakdown,
+      ),
       error:
         beforeSettled.status === "rejected"
           ? (beforeSettled.reason as Error)
@@ -182,7 +230,10 @@ export async function run(argv: string[]): Promise<number> {
     const after: PeriodOutcome = {
       label: "after",
       tool: afterTool,
-      result: afterSettled.status === "fulfilled" ? afterSettled.value : null,
+      result: stripSessionsUnlessRequested(
+        afterSettled.status === "fulfilled" ? afterSettled.value : null,
+        breakdown,
+      ),
       error:
         afterSettled.status === "rejected"
           ? (afterSettled.reason as Error)
@@ -212,7 +263,9 @@ export async function run(argv: string[]): Promise<number> {
     if (values.json) {
       console.log(JSON.stringify(report, null, 2));
     } else {
-      console.log(renderTerminalSummary(report));
+      console.log(
+        renderTerminalSummary(report, breakdown ? { breakdown } : {}),
+      );
       console.log(`\nFull report: ${jsonPath}`);
     }
 

@@ -1,8 +1,16 @@
 import { writeFile, readFile, appendFile, access } from "node:fs/promises";
 import { stripControlChars } from "./adapters/csv-import.js";
-import type { ComparisonReport } from "./compare.js";
+import { topSessions } from "./schema.js";
+import type { BreakdownMode } from "./schema.js";
+import type { ComparisonReport, PeriodOutcome } from "./compare.js";
 
 const GITIGNORE_ENTRY = "teamspend-snapshot-*.json";
+/** How many sessions the terminal breakdown table shows per period. */
+const SESSION_BREAKDOWN_LIMIT = 10;
+
+export interface RenderOptions {
+  breakdown?: BreakdownMode;
+}
 
 /**
  * Scaffolds a .gitignore entry for the report file in the CWD if one doesn't
@@ -39,7 +47,49 @@ function formatUsd(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
-export function renderTerminalSummary(report: ComparisonReport): string {
+/**
+ * Appends a per-session cost breakdown for one period's outcome, or (when
+ * `--breakdown session` was requested but this outcome's tool/adapter
+ * doesn't produce session-level data) a clear explanation of why not.
+ * Never silently shows nothing and never fabricates a breakdown for a
+ * tool whose real data has no session concept.
+ */
+function pushSessionBreakdown(lines: string[], outcome: PeriodOutcome): void {
+  if (!outcome.result) return; // DATA UNAVAILABLE already covers this case.
+
+  const allSessions = outcome.result.users.flatMap((u) => u.sessions ?? []);
+  const anyUserSupportsSessions = outcome.result.users.some(
+    (u) => u.sessions !== undefined,
+  );
+
+  if (allSessions.length > 0) {
+    lines.push(
+      `  SESSION BREAKDOWN (top ${Math.min(SESSION_BREAKDOWN_LIMIT, allSessions.length)} by cost):`,
+    );
+    topSessions(allSessions, SESSION_BREAKDOWN_LIMIT).forEach((s, i) => {
+      const estimateTag = s.isEstimated ? " (estimated)" : "";
+      const reqs = s.requests ?? 0;
+      lines.push(
+        `    ${i + 1}. ${s.sessionId}     ${formatUsd(s.costUsd)}     ${reqs} req${reqs === 1 ? "" : "s"}${estimateTag}`,
+      );
+    });
+  } else if (anyUserSupportsSessions) {
+    lines.push("  SESSION BREAKDOWN: no session activity in this window.");
+  } else {
+    lines.push(
+      `  SESSION BREAKDOWN: not available for ${outcome.tool} -- this tool's data source ` +
+        "reports aggregate totals only, with no per-session/conversation breakdown in its " +
+        "response shape. Session-level cost breakdown is only available for claude-code-personal " +
+        "and opencode, which read local session logs directly.",
+    );
+  }
+  lines.push("");
+}
+
+export function renderTerminalSummary(
+  report: ComparisonReport,
+  options: RenderOptions = {},
+): string {
   const lines: string[] = [];
   lines.push("teamspend snapshot -- migration cost comparison");
   lines.push(`Tools: ${report.before.tool} -> ${report.after.tool}`);
@@ -62,6 +112,10 @@ export function renderTerminalSummary(report: ComparisonReport): string {
       );
     }
     lines.push("");
+
+    if (options.breakdown === "session") {
+      pushSessionBreakdown(lines, outcome);
+    }
   }
 
   if (report.deltaUsd !== null && report.deltaPercent !== null) {

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..errors import DataUnavailableError
-from ..types import AdapterResult, DateWindow, UserUsage, sum_cost
+from ..types import AdapterResult, DateWindow, SessionUsage, UserUsage, sum_cost
 
 TOOL = "claude-code-personal"
 
@@ -144,6 +144,11 @@ def fetch_claude_code_personal_usage(window: DateWindow) -> AdapterResult:
     requests = 0
     cost_usd = 0.0
     is_estimated = False
+    # Per-session totals, keyed by each JSONL line's own sessionId. A line
+    # with no sessionId still contributes to the flat totals above but
+    # can't be attributed to any session, so it's simply left out of this
+    # dict.
+    session_totals: Dict[str, Dict[str, Any]] = {}
 
     for file_path in jsonl_files:
         text = file_path.read_text(encoding="utf-8")
@@ -174,17 +179,61 @@ def fetch_claude_code_personal_usage(window: DateWindow) -> AdapterResult:
                 seen_keys.add(dedupe_key)
 
             usage = message.get("usage") or {}
-            input_tokens += usage.get("input_tokens") or 0
-            output_tokens += usage.get("output_tokens") or 0
+            line_input_tokens = usage.get("input_tokens") or 0
+            line_output_tokens = usage.get("output_tokens") or 0
+            input_tokens += line_input_tokens
+            output_tokens += line_output_tokens
             cache_read_tokens += usage.get("cache_read_input_tokens") or 0
             cache_write_tokens += usage.get("cache_creation_input_tokens") or 0
             requests += 1
 
             cost = entry.get("costUSD")
+            line_cost_usd = 0.0
+            line_is_estimated = False
             if isinstance(cost, (int, float)) and not isinstance(cost, bool):
                 cost_usd += cost
+                line_cost_usd = float(cost)
             else:
                 is_estimated = True
+                line_is_estimated = True
+
+            session_id = entry.get("sessionId")
+            if session_id:
+                totals = session_totals.setdefault(
+                    session_id,
+                    {
+                        "cost_usd": 0.0,
+                        "input_tokens": 0,
+                        "output_tokens": 0,
+                        "requests": 0,
+                        "is_estimated": False,
+                    },
+                )
+                totals["cost_usd"] += line_cost_usd
+                totals["input_tokens"] += line_input_tokens
+                totals["output_tokens"] += line_output_tokens
+                totals["requests"] += 1
+                totals["is_estimated"] = totals["is_estimated"] or line_is_estimated
+
+    # Only attach `sessions` when at least one line actually carried a
+    # sessionId -- an empty list would misleadingly claim "zero sessions"
+    # for a log format that simply predates the sessionId field, when the
+    # truth is teamspend couldn't group anything at all.
+    sessions: Optional[List[SessionUsage]] = (
+        [
+            SessionUsage(
+                session_id=session_id,
+                cost_usd=totals["cost_usd"],
+                input_tokens=totals["input_tokens"],
+                output_tokens=totals["output_tokens"],
+                requests=totals["requests"],
+                is_estimated=totals["is_estimated"],
+            )
+            for session_id, totals in session_totals.items()
+        ]
+        if session_totals
+        else None
+    )
 
     user = UserUsage(
         user_id=_resolve_local_user_id(),
@@ -196,6 +245,7 @@ def fetch_claude_code_personal_usage(window: DateWindow) -> AdapterResult:
         requests=requests,
         cost_usd=cost_usd,
         is_estimated=is_estimated,
+        sessions=sessions,
     )
 
     users = [user]

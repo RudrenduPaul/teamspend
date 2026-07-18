@@ -56,6 +56,106 @@ describe("fetchClaudeCodePersonalUsage", () => {
     expect(result.users[0]?.userEmail).toBeNull();
   });
 
+  it("aggregates the fixture's entries into per-session totals, not just the flat sum", async () => {
+    const projectsDir = path.join(tmpDir, "projects", "my-project");
+    await mkdir(projectsDir, { recursive: true });
+    const fixtureContents = await readFile(FIXTURE_PATH, "utf-8");
+    await writeFile(path.join(projectsDir, "session.jsonl"), fixtureContents);
+
+    process.env.CLAUDE_CONFIG_DIR = path.join(tmpDir, "projects");
+
+    const result = await fetchClaudeCodePersonalUsage({
+      start: "2026-06-01",
+      end: "2026-06-30",
+    });
+
+    // Fixture has two lines for session-a (0.045 + 0.081) and one line for
+    // session-b (0.204) -- see fixtures/claude-code-personal.fixture.jsonl.
+    const sessions = result.users[0]?.sessions;
+    expect(sessions).toHaveLength(2);
+
+    const sessionA = sessions?.find((s) => s.sessionId === "session-a");
+    expect(sessionA?.costUsd).toBeCloseTo(0.045 + 0.081, 3);
+    expect(sessionA?.requests).toBe(2);
+    expect(sessionA?.inputTokens).toBe(1200 + 2100);
+    expect(sessionA?.outputTokens).toBe(340 + 610);
+    expect(sessionA?.isEstimated).toBe(false);
+
+    const sessionB = sessions?.find((s) => s.sessionId === "session-b");
+    expect(sessionB?.costUsd).toBeCloseTo(0.204, 3);
+    expect(sessionB?.requests).toBe(1);
+
+    // Per-session costs must sum back to the same flat total the adapter
+    // has always reported -- the breakdown is a decomposition of the
+    // existing number, never a second, disagreeing source of truth.
+    const sessionTotal = (sessions ?? []).reduce((sum, s) => sum + s.costUsd, 0);
+    expect(sessionTotal).toBeCloseTo(result.totalCostUsd, 3);
+  });
+
+  it("leaves sessions undefined when no line in the log carries a sessionId", async () => {
+    const projectsDir = path.join(tmpDir, "projects", "proj");
+    await mkdir(projectsDir, { recursive: true });
+    await writeFile(
+      path.join(projectsDir, "session.jsonl"),
+      `${JSON.stringify({
+        timestamp: "2026-06-05T10:00:00.000Z",
+        message: { id: "m1", usage: { input_tokens: 10, output_tokens: 5 } },
+        requestId: "r1",
+        costUSD: 0.01,
+        // Deliberately no sessionId -- simulates an older log format that
+        // predates the field.
+      })}\n`,
+    );
+
+    process.env.CLAUDE_CONFIG_DIR = path.join(tmpDir, "projects");
+
+    const result = await fetchClaudeCodePersonalUsage({
+      start: "2026-06-01",
+      end: "2026-06-30",
+    });
+
+    expect(result.users[0]?.sessions).toBeUndefined();
+    expect(result.totalCostUsd).toBeCloseTo(0.01, 3);
+  });
+
+  it("flags a session as estimated when any of its entries is missing costUSD, without losing its token counts", async () => {
+    const projectsDir = path.join(tmpDir, "projects", "proj");
+    await mkdir(projectsDir, { recursive: true });
+    const withCost = {
+      timestamp: "2026-06-05T10:00:00.000Z",
+      sessionId: "session-mixed",
+      message: { id: "m1", usage: { input_tokens: 100, output_tokens: 20 } },
+      requestId: "r1",
+      costUSD: 0.02,
+    };
+    const withoutCost = {
+      timestamp: "2026-06-06T10:00:00.000Z",
+      sessionId: "session-mixed",
+      message: { id: "m2", usage: { input_tokens: 50, output_tokens: 10 } },
+      requestId: "r2",
+      // No costUSD field.
+    };
+    await writeFile(
+      path.join(projectsDir, "session.jsonl"),
+      `${JSON.stringify(withCost)}\n${JSON.stringify(withoutCost)}\n`,
+    );
+
+    process.env.CLAUDE_CONFIG_DIR = path.join(tmpDir, "projects");
+
+    const result = await fetchClaudeCodePersonalUsage({
+      start: "2026-06-01",
+      end: "2026-06-30",
+    });
+
+    const session = result.users[0]?.sessions?.[0];
+    expect(session?.sessionId).toBe("session-mixed");
+    expect(session?.requests).toBe(2);
+    expect(session?.inputTokens).toBe(150);
+    expect(session?.outputTokens).toBe(30);
+    expect(session?.costUsd).toBeCloseTo(0.02, 3);
+    expect(session?.isEstimated).toBe(true);
+  });
+
   it("also accepts a CLAUDE_CONFIG_DIR entry that is the parent config dir, not the projects/ dir itself", async () => {
     const projectsDir = path.join(tmpDir, "config", "projects", "proj");
     await mkdir(projectsDir, { recursive: true });

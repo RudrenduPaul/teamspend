@@ -12,12 +12,15 @@ import os
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 from .adapters.csv_import import strip_control_chars
 from .compare import ComparisonReport, PeriodOutcome
+from .types import BreakdownMode, top_sessions
 
 GITIGNORE_ENTRY = "teamspend-snapshot-*.json"
+# How many sessions the terminal breakdown table shows per period.
+SESSION_BREAKDOWN_LIMIT = 10
 
 
 def scaffold_gitignore(cwd: str) -> bool:
@@ -50,7 +53,53 @@ def _format_usd(amount: float) -> str:
     return f"${amount:.2f}"
 
 
-def render_terminal_summary(report: ComparisonReport) -> str:
+def _push_session_breakdown(lines: List[str], outcome: PeriodOutcome) -> None:
+    """
+    Appends a per-session cost breakdown for one period's outcome, or (when
+    --breakdown session was requested but this outcome's tool/adapter
+    doesn't produce session-level data) a clear explanation of why not.
+    Never silently shows nothing and never fabricates a breakdown for a
+    tool whose real data has no session concept.
+    """
+    if not outcome.result:
+        return  # DATA UNAVAILABLE already covers this case.
+
+    all_sessions = [
+        session
+        for user in outcome.result.users
+        for session in (user.sessions or [])
+    ]
+    any_user_supports_sessions = any(
+        user.sessions is not None for user in outcome.result.users
+    )
+
+    if all_sessions:
+        shown = min(SESSION_BREAKDOWN_LIMIT, len(all_sessions))
+        lines.append(f"  SESSION BREAKDOWN (top {shown} by cost):")
+        for i, session in enumerate(top_sessions(all_sessions, SESSION_BREAKDOWN_LIMIT)):
+            estimate_tag = " (estimated)" if session.is_estimated else ""
+            reqs = session.requests or 0
+            plural = "" if reqs == 1 else "s"
+            lines.append(
+                f"    {i + 1}. {session.session_id}     "
+                f"{_format_usd(session.cost_usd)}     {reqs} req{plural}{estimate_tag}"
+            )
+    elif any_user_supports_sessions:
+        lines.append("  SESSION BREAKDOWN: no session activity in this window.")
+    else:
+        lines.append(
+            f"  SESSION BREAKDOWN: not available for {outcome.tool} -- this tool's data "
+            "source reports aggregate totals only, with no per-session/conversation "
+            "breakdown in its response shape. Session-level cost breakdown is only "
+            "available for claude-code-personal and opencode, which read local session "
+            "logs directly."
+        )
+    lines.append("")
+
+
+def render_terminal_summary(
+    report: ComparisonReport, breakdown: Optional[BreakdownMode] = None
+) -> str:
     lines = []
     lines.append("teamspend snapshot -- migration cost comparison")
     lines.append(f"Tools: {report.before.tool} -> {report.after.tool}")
@@ -72,6 +121,9 @@ def render_terminal_summary(report: ComparisonReport) -> str:
             message = str(outcome.error) if outcome.error else "unknown error"
             lines.append(f"  DATA UNAVAILABLE: {message}")
         lines.append("")
+
+        if breakdown == "session":
+            _push_session_breakdown(lines, outcome)
 
     if report.delta_usd is not None and report.delta_percent is not None:
         sign = "+" if report.delta_usd >= 0 else "-"
@@ -100,6 +152,38 @@ def render_terminal_summary(report: ComparisonReport) -> str:
     return "\n".join(lines)
 
 
+def _user_to_dict(u: Any) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "userId": u.user_id,
+        "userEmail": u.user_email,
+        "inputTokens": u.input_tokens,
+        "outputTokens": u.output_tokens,
+        "cacheReadTokens": u.cache_read_tokens,
+        "cacheWriteTokens": u.cache_write_tokens,
+        "requests": u.requests,
+        "costUsd": u.cost_usd,
+        "isEstimated": u.is_estimated,
+    }
+    # Only present in the JSON report when the adapter actually produced
+    # session data AND the caller requested it -- matches the TypeScript
+    # port's stripSessionsUnlessRequested behavior in cli.py, which sets
+    # u.sessions back to None on every user when --breakdown session
+    # wasn't passed, so the default report shape is unchanged.
+    if u.sessions is not None:
+        payload["sessions"] = [
+            {
+                "sessionId": s.session_id,
+                "costUsd": s.cost_usd,
+                "inputTokens": s.input_tokens,
+                "outputTokens": s.output_tokens,
+                "requests": s.requests,
+                "isEstimated": s.is_estimated,
+            }
+            for s in u.sessions
+        ]
+    return payload
+
+
 def _outcome_to_dict(outcome: PeriodOutcome) -> Dict[str, Any]:
     return {
         "label": outcome.label,
@@ -110,20 +194,7 @@ def _outcome_to_dict(outcome: PeriodOutcome) -> Dict[str, Any]:
                 "window": asdict(outcome.result.window),
                 "totalCostUsd": outcome.result.total_cost_usd,
                 "isEstimated": outcome.result.is_estimated,
-                "users": [
-                    {
-                        "userId": u.user_id,
-                        "userEmail": u.user_email,
-                        "inputTokens": u.input_tokens,
-                        "outputTokens": u.output_tokens,
-                        "cacheReadTokens": u.cache_read_tokens,
-                        "cacheWriteTokens": u.cache_write_tokens,
-                        "requests": u.requests,
-                        "costUsd": u.cost_usd,
-                        "isEstimated": u.is_estimated,
-                    }
-                    for u in outcome.result.users
-                ],
+                "users": [_user_to_dict(u) for u in outcome.result.users],
             }
             if outcome.result
             else None

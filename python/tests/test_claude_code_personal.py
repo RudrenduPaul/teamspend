@@ -32,6 +32,99 @@ def test_normalizes_a_happy_path_fixture_read_via_a_claude_config_dir_pointing_a
     assert result.users[0].user_email is None
 
 
+def test_aggregates_the_fixture_entries_into_per_session_totals(
+    tmp_path, monkeypatch, fixtures_dir
+):
+    fixture_text = (fixtures_dir / "claude-code-personal.fixture.jsonl").read_text()
+    projects_dir = tmp_path / "projects" / "my-project"
+    projects_dir.mkdir(parents=True)
+    (projects_dir / "session.jsonl").write_text(fixture_text)
+
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "projects"))
+
+    result = fetch_claude_code_personal_usage(DateWindow("2026-06-01", "2026-06-30"))
+
+    # Fixture has two lines for session-a (0.045 + 0.081) and one line for
+    # session-b (0.204) -- see fixtures/claude-code-personal.fixture.jsonl.
+    sessions = result.users[0].sessions
+    assert sessions is not None
+    assert len(sessions) == 2
+
+    session_a = next(s for s in sessions if s.session_id == "session-a")
+    assert session_a.cost_usd == pytest.approx(0.045 + 0.081, abs=0.001)
+    assert session_a.requests == 2
+    assert session_a.input_tokens == 1200 + 2100
+    assert session_a.output_tokens == 340 + 610
+    assert session_a.is_estimated is False
+
+    session_b = next(s for s in sessions if s.session_id == "session-b")
+    assert session_b.cost_usd == pytest.approx(0.204, abs=0.001)
+    assert session_b.requests == 1
+
+    # Per-session costs must sum back to the same flat total already
+    # reported -- the breakdown is a decomposition of the existing number,
+    # never a second, disagreeing source of truth.
+    session_total = sum(s.cost_usd for s in sessions)
+    assert session_total == pytest.approx(result.total_cost_usd, abs=0.001)
+
+
+def test_leaves_sessions_none_when_no_line_carries_a_session_id(tmp_path, monkeypatch):
+    projects_dir = tmp_path / "projects" / "proj"
+    _write_jsonl(
+        projects_dir / "session.jsonl",
+        {
+            "timestamp": "2026-06-05T10:00:00.000Z",
+            "message": {"id": "m1", "usage": {"input_tokens": 10, "output_tokens": 5}},
+            "requestId": "r1",
+            "costUSD": 0.01,
+            # Deliberately no sessionId -- simulates an older log format
+            # that predates the field.
+        },
+    )
+
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "projects"))
+
+    result = fetch_claude_code_personal_usage(DateWindow("2026-06-01", "2026-06-30"))
+
+    assert result.users[0].sessions is None
+    assert result.total_cost_usd == pytest.approx(0.01, abs=0.001)
+
+
+def test_flags_a_session_as_estimated_when_any_entry_is_missing_costusd(
+    tmp_path, monkeypatch
+):
+    projects_dir = tmp_path / "projects" / "proj"
+    with_cost = {
+        "timestamp": "2026-06-05T10:00:00.000Z",
+        "sessionId": "session-mixed",
+        "message": {"id": "m1", "usage": {"input_tokens": 100, "output_tokens": 20}},
+        "requestId": "r1",
+        "costUSD": 0.02,
+    }
+    without_cost = {
+        "timestamp": "2026-06-06T10:00:00.000Z",
+        "sessionId": "session-mixed",
+        "message": {"id": "m2", "usage": {"input_tokens": 50, "output_tokens": 10}},
+        "requestId": "r2",
+        # No costUSD field.
+    }
+    _write_jsonl(projects_dir / "session.jsonl", with_cost, without_cost)
+
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "projects"))
+
+    result = fetch_claude_code_personal_usage(DateWindow("2026-06-01", "2026-06-30"))
+
+    sessions = result.users[0].sessions
+    assert sessions is not None
+    session = sessions[0]
+    assert session.session_id == "session-mixed"
+    assert session.requests == 2
+    assert session.input_tokens == 150
+    assert session.output_tokens == 30
+    assert session.cost_usd == pytest.approx(0.02, abs=0.001)
+    assert session.is_estimated is True
+
+
 def test_accepts_a_claude_config_dir_entry_that_is_the_parent_config_dir(
     tmp_path, monkeypatch
 ):
