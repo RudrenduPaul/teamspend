@@ -3,7 +3,7 @@ requires = ["hatchling>=1.18.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "teamspend"
+name = "teamspend-cli"
 version = "0.2.1"
 description = "Compare AI coding tool spend before and after a migration -- Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI, real numbers pulled from each vendor's own API or local logs, one command, zero runtime dependencies."
 readme = "README.md"
