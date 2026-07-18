@@ -80,8 +80,13 @@ def _push_session_breakdown(lines: List[str], outcome: PeriodOutcome) -> None:
             estimate_tag = " (estimated)" if session.is_estimated else ""
             reqs = session.requests or 0
             plural = "" if reqs == 1 else "s"
+            # session_id is local-log-sourced, same class of value as
+            # user_email below -- strip control chars so a crafted log
+            # entry can't inject terminal escape sequences via this print
+            # path either.
+            safe_session_id = strip_control_chars(session.session_id)
             lines.append(
-                f"    {i + 1}. {session.session_id}     "
+                f"    {i + 1}. {safe_session_id}     "
                 f"{_format_usd(session.cost_usd)}     {reqs} req{plural}{estimate_tag}"
             )
     elif any_user_supports_sessions:

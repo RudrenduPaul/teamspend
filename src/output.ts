@@ -69,8 +69,12 @@ function pushSessionBreakdown(lines: string[], outcome: PeriodOutcome): void {
     topSessions(allSessions, SESSION_BREAKDOWN_LIMIT).forEach((s, i) => {
       const estimateTag = s.isEstimated ? " (estimated)" : "";
       const reqs = s.requests ?? 0;
+      // sessionId is local-log-sourced, same class of value as userEmail
+      // below -- strip control chars so a crafted log entry can't inject
+      // terminal escape sequences via this print path either.
+      const safeSessionId = stripControlChars(s.sessionId);
       lines.push(
-        `    ${i + 1}. ${s.sessionId}     ${formatUsd(s.costUsd)}     ${reqs} req${reqs === 1 ? "" : "s"}${estimateTag}`,
+        `    ${i + 1}. ${safeSessionId}     ${formatUsd(s.costUsd)}     ${reqs} req${reqs === 1 ? "" : "s"}${estimateTag}`,
       );
     });
   } else if (anyUserSupportsSessions) {

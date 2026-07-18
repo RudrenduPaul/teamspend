@@ -178,6 +178,48 @@ describe("renderTerminalSummary", () => {
     expect(output).toContain("(estimated)");
   });
 
+  it("strips control characters from a sessionId sourced from a local log, same as userEmail", () => {
+    const sessions: SessionUsage[] = [
+      {
+        sessionId: "\x1b[31mevil-session",
+        costUsd: 5,
+        inputTokens: 100,
+        outputTokens: 50,
+        requests: 1,
+        isEstimated: false,
+      },
+    ];
+    const user: UserUsage = {
+      userId: "local-user",
+      userEmail: null,
+      inputTokens: 100,
+      outputTokens: 50,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      requests: 1,
+      costUsd: 5,
+      isEstimated: false,
+      sessions,
+    };
+    const before: PeriodOutcome = {
+      label: "before",
+      tool: "claude-code-personal",
+      result: makeResult("cursor", 5, [user]),
+      error: null,
+    };
+    const after: PeriodOutcome = {
+      label: "after",
+      tool: "claude-code-personal",
+      result: makeResult("cursor", 5, [user]),
+      error: null,
+    };
+    const report = buildComparison(before, after);
+
+    const output = renderTerminalSummary(report, { breakdown: "session" });
+    expect(output).not.toContain("\x1b");
+    expect(output).toContain("evil-session");
+  });
+
   it("explains why no breakdown is available when --breakdown session is requested but the tool's data has no session concept (e.g. an admin-API-based adapter)", () => {
     const adminApiUser: UserUsage = {
       userId: "u1",

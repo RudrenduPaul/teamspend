@@ -125,6 +125,42 @@ def test_prints_a_per_session_cost_table_sorted_by_cost_descending_when_breakdow
     assert "(estimated)" in output
 
 
+def test_strips_control_characters_from_a_session_id_sourced_from_a_local_log_same_as_user_email():
+    sessions = [
+        SessionUsage(
+            session_id="\x1b[31mevil-session",
+            cost_usd=5,
+            input_tokens=100,
+            output_tokens=50,
+            requests=1,
+            is_estimated=False,
+        )
+    ]
+    user = UserUsage(
+        user_id="local-user",
+        user_email=None,
+        input_tokens=100,
+        output_tokens=50,
+        cache_read_tokens=0,
+        cache_write_tokens=0,
+        requests=1,
+        cost_usd=5,
+        is_estimated=False,
+        sessions=sessions,
+    )
+    before = PeriodOutcome(
+        "before", "claude-code-personal", _result("cursor", 5, [user]), None
+    )
+    after = PeriodOutcome(
+        "after", "claude-code-personal", _result("cursor", 5, [user]), None
+    )
+    report = build_comparison(before, after)
+
+    output = render_terminal_summary(report, "session")
+    assert "\x1b" not in output
+    assert "evil-session" in output
+
+
 def test_explains_why_no_breakdown_is_available_for_an_admin_api_based_adapter():
     admin_api_user = UserUsage(
         user_id="u1",

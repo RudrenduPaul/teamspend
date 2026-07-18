@@ -6,6 +6,47 @@ JS/TS) and the PyPI package (`teamspend`, Python) -- since they talk to
 the same two admin APIs and compute the same before/after delta; entries
 note which distribution they apply to.
 
+## [0.2.1] - 2026-07-18
+
+Security fix, both distributions.
+
+### Fixed
+
+- `output.ts`/`output.py`: the `--breakdown session` terminal table printed
+  `sessionId` without the control-character stripping already applied to
+  `userEmail` three lines below it in the same file. A local-log-sourced
+  session ID could carry a raw terminal escape sequence (e.g. an OSC 52
+  clipboard-write payload) that would print unsanitized. Now reuses the
+  existing `stripControlChars`/`strip_control_chars` helper for `sessionId`
+  too, closing the same class of gap already fixed for `userEmail`.
+
+## [0.2.0] - 2026-07-18
+
+Both distributions.
+
+### Added
+
+- GitHub Copilot adapter (`TEAMSPEND_COPILOT_TOKEN` + `TEAMSPEND_COPILOT_ORG`,
+  optional `TEAMSPEND_COPILOT_SEAT_PRICE_USD`) -- real usage-metrics API,
+  cost derived from GitHub's own published `ai_credits_used` -> USD rate,
+  since the API has no cost field of its own.
+- OpenCode adapter -- reads OpenCode's local session logs directly, no
+  admin API, no credential.
+- Codex CLI adapter -- reads Codex's local rollout logs directly, no admin
+  API, no credential; cost always reported as `$0`/estimated since Codex's
+  local data has no cost field at all.
+- `claude-code-personal` tool id -- credential-free mode for someone who
+  wants their own Claude Code usage without org-admin access, reading
+  Claude Code's own local JSONL logs.
+- `--breakdown session` flag -- per-session cost table (available for
+  `claude-code-personal` and `opencode` only, since the admin-API tools'
+  responses have no session concept to group by).
+
+### Changed
+
+- README and package metadata (`description`, `keywords`) updated across
+  both distributions to reflect all 6 tool configurations.
+
 ## [Python 0.1.1] - 2026-07-16
 
 Docs-only patch release for the Python distribution. No source or
