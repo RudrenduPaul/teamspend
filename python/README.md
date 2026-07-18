@@ -1,3 +1,10 @@
+# teamspend (Python) -- renamed to teamspend-cli
+
+**This PyPI package has been renamed.** Install [`teamspend-cli`](https://pypi.org/project/teamspend-cli/)
+instead: `pip install teamspend-cli`. This package will not receive further updates.
+
+---
+
 # teamspend (Python)
 
 Compare AI coding tool spend before and after a migration -- Cursor,
