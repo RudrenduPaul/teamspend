@@ -33,6 +33,7 @@ More teams are running more than one AI coding tool at once, or moving between t
 - [OpenCode: local-only, no API key needed](#opencode-local-only-no-api-key-needed)
 - [Codex CLI: local-only, no API key needed](#codex-cli-local-only-no-api-key-needed)
 - [Personal usage mode, for when you don't have admin access](#personal-usage-mode-for-when-you-dont-have-admin-access)
+- [Session-level cost breakdown](#session-level-cost-breakdown)
 - [Roadmap](#roadmap)
 - [Good to know before you run it](#good-to-know-before-you-run-it)
 - [What is teamspend, and why does it exist](#what-is-teamspend-and-why-does-it-exist)
@@ -252,6 +253,21 @@ Everything above needs org-admin credentials (`TEAMSPEND_CURSOR_TOKEN`, `TEAMSPE
 This mode reads Claude Code's own local JSONL session logs straight off disk (`~/.claude/projects/**/*.jsonl` by default, or wherever `CLAUDE_CONFIG_DIR`/`XDG_CONFIG_HOME` points). No API key, no network call, no admin access -- it needs nothing but the logs Claude Code already writes on your machine. It reports on the single local user running the command, not a team.
 
 Two honest caveats: it only sees what's on the machine you run it on, and not every logged entry carries an exact `costUSD` from Claude Code -- when one doesn't, that entry's tokens still count but its dollar amount is flagged `isEstimated`, same as every other estimated number this tool ever shows you (see "Flags suspicious zeros instead of trusting them" above). It composes with the CSV-import fallback too: pair `claude-code-personal` on one side with a `--before-csv`/`--after-csv` on the other if you're comparing your own usage against a hand-supplied number for a tool teamspend doesn't fetch directly.
+
+## Session-level cost breakdown
+
+A flat total answers "what did we spend," not "what's driving it." Add `--breakdown session` to break that total down by session/conversation -- the same log data `claude-code-personal` and `opencode` already read, just grouped by the `sessionId`/`sessionID` each log entry already carries, instead of summed into one number:
+
+    npx teamspend --tools claude-code-personal,claude-code-personal --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30 --breakdown session
+
+This adds a per-session table (top 10 by cost) to the terminal summary, and the full session array to the JSON report -- both opt-in. Without the flag, output is byte-for-byte what it always was.
+
+**A session is a bounded unit of one interaction -- the most honest proxy teamspend can offer for "cost per task."** That's a real, defensible number: it comes straight from the log's own session identifier, nothing invented. What it is *not* is a measure of task success, quality, or ROI. No vendor -- not Anthropic, not Cursor, not GitHub -- exposes whether a given session's output was actually good, so teamspend never claims to know that, and never will. If a session cost $9 and another cost $1, that tells you where the dollars went, not which one was worth it.
+
+Two honest limits on top of that:
+
+- **Only available for the local-log-based tools.** `claude-code-personal` and `opencode` read session-scoped data straight off disk, so they can group by it. `cursor`, `claude-code`, and `copilot` pull from each vendor's admin API, and none of those three APIs return anything below a per-user aggregate -- there is no session field anywhere in their response shape to group by. Passing `--breakdown session` with those tools prints a clear message explaining that, not an empty table or a fabricated one.
+- **A session's dollar figure inherits whatever estimation status its underlying entries have.** If any log line in a session is missing an exact cost, that session (and the entries within it) is flagged `isEstimated`, the same rule the flat total already follows.
 
 ## Roadmap
 

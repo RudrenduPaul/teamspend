@@ -3,7 +3,12 @@ import { userInfo } from "node:os";
 import { join } from "node:path";
 import { DataUnavailableError } from "../errors.js";
 import { sumCost } from "../schema.js";
-import type { AdapterResult, DateWindow, UserUsage } from "../schema.js";
+import type {
+  AdapterResult,
+  DateWindow,
+  SessionUsage,
+  UserUsage,
+} from "../schema.js";
 
 const TOOL = "opencode";
 
@@ -160,6 +165,15 @@ export async function fetchOpenCodeSpend(
   let cacheWriteTokens = 0;
   let requests = 0;
   let costUsd = 0;
+  // Per-session totals, keyed by each message's own sessionID (the same
+  // sessionID that names its parent storage/message/{sessionID}/ directory).
+  // A message with no sessionID (shouldn't happen in real OpenCode output,
+  // but the field is optional on the type) still contributes to the flat
+  // totals above, just not to this map.
+  const sessionTotals = new Map<
+    string,
+    { costUsd: number; inputTokens: number; outputTokens: number; requests: number }
+  >();
 
   for (const file of allFiles) {
     let raw: OpenCodeMessage;
@@ -179,16 +193,51 @@ export async function fetchOpenCodeSpend(
     }
 
     requests += 1;
-    inputTokens += raw.tokens?.input ?? 0;
-    outputTokens += raw.tokens?.output ?? 0;
+    const messageInputTokens = raw.tokens?.input ?? 0;
+    const messageOutputTokens = raw.tokens?.output ?? 0;
+    const messageCost = raw.cost ?? 0;
+    inputTokens += messageInputTokens;
+    outputTokens += messageOutputTokens;
     cacheReadTokens += raw.tokens?.cache?.read ?? 0;
     cacheWriteTokens += raw.tokens?.cache?.write ?? 0;
-    costUsd += raw.cost ?? 0;
+    costUsd += messageCost;
+
+    if (raw.sessionID) {
+      const existing = sessionTotals.get(raw.sessionID) ?? {
+        costUsd: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        requests: 0,
+      };
+      existing.costUsd += messageCost;
+      existing.inputTokens += messageInputTokens;
+      existing.outputTokens += messageOutputTokens;
+      existing.requests += 1;
+      sessionTotals.set(raw.sessionID, existing);
+    }
   }
 
   if (requests === 0) {
     return { source: TOOL, window, totalCostUsd: 0, isEstimated: false, users: [] };
   }
+
+  // Only attach `sessions` when at least one message actually carried a
+  // sessionID -- an empty array would misleadingly claim "zero sessions"
+  // rather than "couldn't group anything."
+  const sessions: SessionUsage[] | undefined =
+    sessionTotals.size > 0
+      ? [...sessionTotals.entries()].map(([sessionId, totals]) => ({
+          sessionId,
+          costUsd: totals.costUsd,
+          inputTokens: totals.inputTokens,
+          outputTokens: totals.outputTokens,
+          requests: totals.requests,
+          // Same reasoning as the overall result below: OpenCode has no
+          // real cost source of truth, so every session's dollar figure is
+          // just as estimated as the aggregate one.
+          isEstimated: true,
+        }))
+      : undefined;
 
   const users: UserUsage[] = [
     {
@@ -211,6 +260,10 @@ export async function fetchOpenCodeSpend(
       // result as estimated, even on the rare message where that field is
       // genuinely populated.
       isEstimated: true,
+      // Conditionally spread rather than always assigning `sessions:
+      // sessions` -- with exactOptionalPropertyTypes, an explicit
+      // `undefined` value is not the same as the key being absent.
+      ...(sessions ? { sessions } : {}),
     },
   ];
 

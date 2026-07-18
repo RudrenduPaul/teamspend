@@ -32,6 +32,37 @@ describe("fetchOpenCodeSpend", () => {
     expect(result.users[0]?.userEmail).toBeNull();
   });
 
+  it("aggregates messages into per-session totals keyed by sessionID", async () => {
+    const result = await fetchOpenCodeSpend(
+      { start: "2026-01-01", end: "2026-12-31" },
+      [FIXTURE_DIR],
+    );
+
+    // Across the whole year: ses_7b03de44 has one in-window assistant
+    // message (msg_ff0011, $0.031); ses_9f2a1c1e has two (msg_ab12cd,
+    // $0.0842, and msg_ab12cf, $0) -- msg_ab12ce is a user-role message and
+    // is excluded from both the flat totals and the session breakdown.
+    const sessions = result.users[0]?.sessions;
+    expect(sessions).toHaveLength(2);
+
+    const sesA = sessions?.find((s) => s.sessionId === "ses_7b03de44");
+    expect(sesA?.requests).toBe(1);
+    expect(sesA?.costUsd).toBeCloseTo(0.031, 4);
+    expect(sesA?.isEstimated).toBe(true);
+
+    const sesB = sessions?.find((s) => s.sessionId === "ses_9f2a1c1e");
+    expect(sesB?.requests).toBe(2);
+    expect(sesB?.costUsd).toBeCloseTo(0.0842 + 0, 4);
+    expect(sesB?.inputTokens).toBe(18240 + 9000);
+    expect(sesB?.outputTokens).toBe(2310 + 1500);
+
+    // Same decomposition invariant as the claude-code-personal adapter: the
+    // per-session costs must sum back to the same flat total already
+    // reported.
+    const sessionTotal = (sessions ?? []).reduce((sum, s) => sum + s.costUsd, 0);
+    expect(sessionTotal).toBeCloseTo(result.totalCostUsd, 4);
+  });
+
   it("always flags OpenCode results as estimated, even when a nonzero cost is present", async () => {
     const result = await fetchOpenCodeSpend(
       { start: "2026-06-01", end: "2026-06-30" },
@@ -146,6 +177,38 @@ describe("real filesystem integration", () => {
       expect(result.users).toHaveLength(1);
       expect(result.users[0]?.requests).toBe(1);
       expect(result.totalCostUsd).toBeCloseTo(0.01, 4);
+      expect(result.users[0]?.sessions).toHaveLength(1);
+      expect(result.users[0]?.sessions?.[0]?.sessionId).toBe("ses_live1");
+      expect(result.users[0]?.sessions?.[0]?.costUsd).toBeCloseTo(0.01, 4);
+    } finally {
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves sessions undefined when a message file has no sessionID field at all", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "teamspend-opencode-nosession-"));
+    const sessionDir = join(dataDir, "storage", "message", "ses_orphan");
+    await mkdir(sessionDir, { recursive: true });
+    await writeFile(
+      join(sessionDir, "msg_orphan.json"),
+      JSON.stringify({
+        id: "msg_orphan",
+        // Deliberately no sessionID field.
+        role: "assistant",
+        time: { created: Date.parse("2026-06-10T00:00:00.000Z") },
+        cost: 0.005,
+        tokens: { input: 10, output: 5 },
+      }),
+    );
+
+    try {
+      const result = await fetchOpenCodeSpend(
+        { start: "2026-06-01", end: "2026-06-30" },
+        [dataDir],
+      );
+      expect(result.users).toHaveLength(1);
+      expect(result.users[0]?.requests).toBe(1);
+      expect(result.users[0]?.sessions).toBeUndefined();
     } finally {
       await rm(dataDir, { recursive: true, force: true });
     }

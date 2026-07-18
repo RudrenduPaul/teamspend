@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..errors import DataUnavailableError
-from ..types import AdapterResult, DateWindow, UserUsage, sum_cost
+from ..types import AdapterResult, DateWindow, SessionUsage, UserUsage, sum_cost
 
 TOOL = "opencode"
 OPENCODE_DATA_DIR_ENV = "OPENCODE_DATA_DIR"
@@ -142,6 +142,11 @@ def fetch_opencode_spend(
     cache_write_tokens = 0
     requests = 0
     cost_usd = 0.0
+    # Per-session totals, keyed by each message's own sessionID (the same
+    # sessionID that names its parent storage/message/{sessionID}/
+    # directory). A message with no sessionID still contributes to the flat
+    # totals above, just not to this dict.
+    session_totals: Dict[str, Dict[str, Any]] = {}
 
     for file_path in all_files:
         try:
@@ -163,16 +168,52 @@ def fetch_opencode_spend(
         requests += 1
         tokens = raw.get("tokens") or {}
         cache = tokens.get("cache") or {}
-        input_tokens += tokens.get("input") or 0
-        output_tokens += tokens.get("output") or 0
+        message_input_tokens = tokens.get("input") or 0
+        message_output_tokens = tokens.get("output") or 0
+        message_cost = raw.get("cost") or 0
+        input_tokens += message_input_tokens
+        output_tokens += message_output_tokens
         cache_read_tokens += cache.get("read") or 0
         cache_write_tokens += cache.get("write") or 0
-        cost_usd += raw.get("cost") or 0
+        cost_usd += message_cost
+
+        session_id = raw.get("sessionID")
+        if session_id:
+            totals = session_totals.setdefault(
+                session_id,
+                {"cost_usd": 0.0, "input_tokens": 0, "output_tokens": 0, "requests": 0},
+            )
+            totals["cost_usd"] += message_cost
+            totals["input_tokens"] += message_input_tokens
+            totals["output_tokens"] += message_output_tokens
+            totals["requests"] += 1
 
     if requests == 0:
         return AdapterResult(
             source=TOOL, window=window, total_cost_usd=0, is_estimated=False, users=[]
         )
+
+    # Only attach `sessions` when at least one message actually carried a
+    # sessionID -- an empty list would misleadingly claim "zero sessions"
+    # rather than "couldn't group anything."
+    sessions: Optional[List[SessionUsage]] = (
+        [
+            SessionUsage(
+                session_id=session_id,
+                cost_usd=totals["cost_usd"],
+                input_tokens=totals["input_tokens"],
+                output_tokens=totals["output_tokens"],
+                requests=totals["requests"],
+                # Same reasoning as the overall result below: OpenCode has
+                # no real cost source of truth, so every session's dollar
+                # figure is just as estimated as the aggregate one.
+                is_estimated=True,
+            )
+            for session_id, totals in session_totals.items()
+        ]
+        if session_totals
+        else None
+    )
 
     users = [
         UserUsage(
@@ -196,6 +237,7 @@ def fetch_opencode_spend(
             # even on the rare message where that field is genuinely
             # populated.
             is_estimated=True,
+            sessions=sessions,
         )
     ]
 

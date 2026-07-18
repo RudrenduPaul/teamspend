@@ -32,6 +32,37 @@ def test_normalizes_local_message_files_within_the_window_into_a_single_syntheti
     assert result.users[0].user_email is None
 
 
+def test_aggregates_messages_into_per_session_totals_keyed_by_session_id():
+    result = fetch_opencode_spend(
+        DateWindow("2026-01-01", "2026-12-31"), [OPENCODE_FIXTURE_DIR]
+    )
+
+    # Across the whole year: ses_7b03de44 has one in-window assistant
+    # message (msg_ff0011, $0.031); ses_9f2a1c1e has two (msg_ab12cd,
+    # $0.0842, and msg_ab12cf, $0) -- msg_ab12ce is a user-role message and
+    # is excluded from both the flat totals and the session breakdown.
+    sessions = result.users[0].sessions
+    assert sessions is not None
+    assert len(sessions) == 2
+
+    ses_a = next(s for s in sessions if s.session_id == "ses_7b03de44")
+    assert ses_a.requests == 1
+    assert ses_a.cost_usd == pytest.approx(0.031, abs=0.0001)
+    assert ses_a.is_estimated is True
+
+    ses_b = next(s for s in sessions if s.session_id == "ses_9f2a1c1e")
+    assert ses_b.requests == 2
+    assert ses_b.cost_usd == pytest.approx(0.0842, abs=0.0001)
+    assert ses_b.input_tokens == 18240 + 9000
+    assert ses_b.output_tokens == 2310 + 1500
+
+    # Same decomposition invariant as the claude-code-personal adapter: the
+    # per-session costs must sum back to the same flat total already
+    # reported.
+    session_total = sum(s.cost_usd for s in sessions)
+    assert session_total == pytest.approx(result.total_cost_usd, abs=0.0001)
+
+
 def test_always_flags_opencode_results_as_estimated_even_with_nonzero_cost():
     result = fetch_opencode_spend(
         DateWindow("2026-06-01", "2026-06-30"), [OPENCODE_FIXTURE_DIR]
@@ -137,3 +168,33 @@ def test_reads_a_freshly_written_per_session_message_file_like_real_opencode_out
         assert len(result.users) == 1
         assert result.users[0].requests == 1
         assert result.total_cost_usd == pytest.approx(0.01, abs=0.0001)
+        assert result.users[0].sessions is not None
+        assert len(result.users[0].sessions) == 1
+        assert result.users[0].sessions[0].session_id == "ses_live1"
+        assert result.users[0].sessions[0].cost_usd == pytest.approx(0.01, abs=0.0001)
+
+
+def test_leaves_sessions_none_when_a_message_file_has_no_session_id_field():
+    with tempfile.TemporaryDirectory(prefix="teamspend-opencode-nosession-") as data_dir:
+        session_dir = Path(data_dir, "storage", "message", "ses_orphan")
+        session_dir.mkdir(parents=True)
+        (session_dir / "msg_orphan.json").write_text(
+            json.dumps(
+                {
+                    "id": "msg_orphan",
+                    # Deliberately no sessionID field.
+                    "role": "assistant",
+                    "time": {"created": 1780704000000},
+                    "cost": 0.005,
+                    "tokens": {"input": 10, "output": 5},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = fetch_opencode_spend(
+            DateWindow("2026-06-01", "2026-06-30"), [data_dir]
+        )
+        assert len(result.users) == 1
+        assert result.users[0].requests == 1
+        assert result.users[0].sessions is None

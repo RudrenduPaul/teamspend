@@ -3,7 +3,12 @@ import { homedir, userInfo } from "node:os";
 import path from "node:path";
 import { DataUnavailableError } from "../errors.js";
 import { sumCost } from "../schema.js";
-import type { AdapterResult, DateWindow, UserUsage } from "../schema.js";
+import type {
+  AdapterResult,
+  DateWindow,
+  SessionUsage,
+  UserUsage,
+} from "../schema.js";
 
 const TOOL = "claude-code-personal";
 
@@ -16,12 +21,26 @@ interface ClaudeCodeLogUsage {
 
 interface ClaudeCodeLogEntry {
   timestamp?: string;
+  // Present on every real Claude Code JSONL line -- ties the entry to the
+  // conversation/session it came from, which is what makes per-session cost
+  // aggregation possible for this adapter (see the sessionTotals loop in
+  // fetchClaudeCodePersonalUsage below).
+  sessionId?: string;
   message?: {
     id?: string;
     usage?: ClaudeCodeLogUsage;
   };
   requestId?: string;
   costUSD?: number;
+}
+
+/** Running per-session accumulator, mirrors the flat totals below it. */
+interface SessionAccumulator {
+  costUsd: number;
+  inputTokens: number;
+  outputTokens: number;
+  requests: number;
+  isEstimated: boolean;
 }
 
 async function pathExists(candidate: string): Promise<boolean> {
@@ -163,6 +182,10 @@ export async function fetchClaudeCodePersonalUsage(
   let requests = 0;
   let costUsd = 0;
   let isEstimated = false;
+  // Per-session totals, keyed by the JSONL line's own sessionId. A line
+  // with no sessionId still contributes to the flat totals above but can't
+  // be attributed to any session, so it's simply left out of this map.
+  const sessionTotals = new Map<string, SessionAccumulator>();
 
   for (const file of jsonlFiles) {
     const contents = await readFile(file, "utf-8");
@@ -196,19 +219,57 @@ export async function fetchClaudeCodePersonalUsage(
       }
 
       const usage = entry.message?.usage;
-      inputTokens += usage?.input_tokens ?? 0;
-      outputTokens += usage?.output_tokens ?? 0;
+      const lineInputTokens = usage?.input_tokens ?? 0;
+      const lineOutputTokens = usage?.output_tokens ?? 0;
+      inputTokens += lineInputTokens;
+      outputTokens += lineOutputTokens;
       cacheReadTokens += usage?.cache_read_input_tokens ?? 0;
       cacheWriteTokens += usage?.cache_creation_input_tokens ?? 0;
       requests += 1;
 
+      let lineCostUsd = 0;
+      let lineIsEstimated = false;
       if (typeof entry.costUSD === "number") {
         costUsd += entry.costUSD;
+        lineCostUsd = entry.costUSD;
       } else {
         isEstimated = true;
+        lineIsEstimated = true;
+      }
+
+      if (entry.sessionId) {
+        const existing = sessionTotals.get(entry.sessionId) ?? {
+          costUsd: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          requests: 0,
+          isEstimated: false,
+        };
+        existing.costUsd += lineCostUsd;
+        existing.inputTokens += lineInputTokens;
+        existing.outputTokens += lineOutputTokens;
+        existing.requests += 1;
+        existing.isEstimated = existing.isEstimated || lineIsEstimated;
+        sessionTotals.set(entry.sessionId, existing);
       }
     }
   }
+
+  // Only attach `sessions` when at least one line actually carried a
+  // sessionId -- an empty array would misleadingly claim "zero sessions"
+  // for a log format that simply predates the sessionId field, when the
+  // truth is teamspend couldn't group anything at all.
+  const sessions: SessionUsage[] | undefined =
+    sessionTotals.size > 0
+      ? [...sessionTotals.entries()].map(([sessionId, totals]) => ({
+          sessionId,
+          costUsd: totals.costUsd,
+          inputTokens: totals.inputTokens,
+          outputTokens: totals.outputTokens,
+          requests: totals.requests,
+          isEstimated: totals.isEstimated,
+        }))
+      : undefined;
 
   const user: UserUsage = {
     userId: resolveLocalUserId(),
@@ -220,6 +281,12 @@ export async function fetchClaudeCodePersonalUsage(
     requests,
     costUsd,
     isEstimated,
+    // Conditionally spread rather than always assigning `sessions:
+    // sessions` -- with exactOptionalPropertyTypes, an explicit `undefined`
+    // value is not the same as the key being absent, and UserUsage.sessions
+    // must be genuinely absent (not present-and-undefined) for adapters
+    // with no session data.
+    ...(sessions ? { sessions } : {}),
   };
 
   const users = [user];
