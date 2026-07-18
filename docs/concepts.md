@@ -197,6 +197,64 @@ instead of calling anything over the network:
   window is different and legitimate: it returns a normal `AdapterResult`
   with an empty `users` list and `is_estimated: false`, not an error.
 
+## Codex CLI: local-file adapter, no admin API
+
+Like OpenCode, OpenAI's Codex CLI (github.com/openai/codex) has no
+admin/team/billing API -- `fetchCodexUsage` / `fetch_codex_usage` reads
+Codex's own local rollout logs directly instead of calling anything over
+the network. Verified directly against `openai/codex`'s own Rust source
+(`codex-rs/`), not a third-party guess:
+
+- **Location**: `<CODEX_HOME>/sessions/YYYY/MM/DD/rollout-<timestamp>-<uuid>.jsonl`,
+  plus the same layout under `<CODEX_HOME>/archived_sessions/` (both are
+  scanned). `CODEX_HOME` is a single directory (never a comma-separated
+  list, unlike Claude Code's `CLAUDE_CONFIG_DIR`) and defaults to
+  `~/.codex` (`codex-rs/utils/home-dir/src/lib.rs::find_codex_home`,
+  `codex-rs/rollout/src/lib.rs`'s `SESSIONS_SUBDIR`/
+  `ARCHIVED_SESSIONS_SUBDIR` constants, `codex-rs/rollout/src/list.rs`'s
+  layout doc comment).
+- **Cold-storage limitation**: Codex background-compresses any rollout
+  file older than 7 days from `.jsonl` to `.jsonl.zst`
+  (`codex-rs/rollout/src/compression.rs`'s `MIN_ROLLOUT_AGE`). This
+  adapter only reads plain `.jsonl` -- the same tradeoff already made for
+  OpenCode's SQLite store: no dependency added for a secondary on-disk
+  format. A window reaching more than ~7 days back will under-report or
+  come back empty; use `--*-csv` to cover that period.
+- **Window filtering and per-turn usage**: each `event_msg` record with
+  `payload.type == "token_count"` carries `payload.info.last_token_usage`
+  (already a per-turn delta, not a cumulative total --
+  `codex-rs/protocol/src/protocol.rs::TokenUsageInfo`) and a top-level
+  `timestamp`. Codex fires each `token_count` event twice in a row with
+  byte-identical `info`; the second copy is skipped rather than
+  double-counted. `input_tokens` already includes `cached_input_tokens` as
+  a subset (confirmed against `codex-api/src/sse/responses.rs`'s own
+  mapping from OpenAI's Responses API `usage` object), so the adapter
+  stores the net, uncached portion as `inputTokens` and the cached portion
+  separately as `cacheReadTokens`, the same double-counting fix already
+  applied to Gemini's adapter precedent.
+- **No cost field at all -- always estimated.** Unlike OpenCode's message
+  files (which at least carry a `cost: 0` placeholder), Codex's
+  `token_count` events have no cost field whatsoever -- only token counts.
+  teamspend bundles no per-token pricing table of its own, so `costUsd` is
+  always `0` and the result is always `isEstimated: true` whenever any
+  usage is found. Token counts are exact; no dollar figure is reported.
+- **One synthetic user per machine, not per team member.** Codex's rollout
+  logs carry no user/email field. Every `token_count` event found is
+  attributed to the OS account running teamspend (same as OpenCode and
+  `claude-code-personal`). `AdapterResult.users` is at most a single
+  entry.
+- **Missing data dir vs. an inactive window**: no local rollout logs found
+  anywhere raises `DataUnavailableError`, the same fallback trigger used
+  elsewhere. A resolved directory that exists but simply has no
+  `token_count` events inside the requested window returns a normal
+  `AdapterResult` with an empty `users` list and `isEstimated: false`, not
+  an error.
+
+Cross-checked against ccusage's own Codex guide (ccusage.com/guide/codex/)
+and mrexodia/agent-cost-dashboard's `cost_dashboard.py`
+(`analyze_codex_jsonl_file`), which parse the identical record shapes
+independently and agree with the Rust source on every field name.
+
 ## Personal usage mode (`claude-code-personal`)
 
 Unlike every other tool id, `claude-code-personal` doesn't call an admin

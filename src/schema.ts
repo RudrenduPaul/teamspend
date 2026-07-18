@@ -3,13 +3,17 @@
  * separate vendor -- it's a credential-free local-file read mode for Claude
  * Code's own JSONL session logs, for someone who wants their personal usage
  * without org-admin API access (see src/adapters/claude-code-personal.ts).
+ * `codex` (OpenAI's Codex CLI) is the same shape as `opencode` -- no
+ * admin/team API, only local per-machine session logs (see
+ * src/adapters/codex.ts).
  */
 export type ToolId =
   | "cursor"
   | "claude-code"
   | "copilot"
   | "opencode"
-  | "claude-code-personal";
+  | "claude-code-personal"
+  | "codex";
 
 export interface DateWindow {
   start: string; // YYYY-MM-DD

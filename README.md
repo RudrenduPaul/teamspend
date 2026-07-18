@@ -31,6 +31,7 @@ More teams are running more than one AI coding tool at once, or moving between t
 - [CSV import, for the history a live API can't reach](#csv-import-for-the-history-a-live-api-cant-reach)
 - [GitHub Copilot support](#github-copilot-support)
 - [OpenCode: local-only, no API key needed](#opencode-local-only-no-api-key-needed)
+- [Codex CLI: local-only, no API key needed](#codex-cli-local-only-no-api-key-needed)
 - [Personal usage mode, for when you don't have admin access](#personal-usage-mode-for-when-you-dont-have-admin-access)
 - [Roadmap](#roadmap)
 - [Good to know before you run it](#good-to-know-before-you-run-it)
@@ -201,6 +202,47 @@ Two honest caveats worth knowing before you trust this number:
   populated. Token counts (input/output/cache read/write) are exact --
   it's only the dollar figure that's approximate.
 
+## Codex CLI: local-only, no API key needed
+
+[Codex CLI](https://github.com/openai/codex) (OpenAI's coding agent CLI)
+has no admin, team, or billing API either -- it's a local CLI, confirmed
+directly against its own Rust source (`codex-rs/`). There is nothing for
+`TEAMSPEND_CODEX_TOKEN` to authenticate, so it doesn't exist; teamspend
+instead reads Codex's own local rollout logs directly off disk
+(`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`, or wherever `CODEX_HOME`
+points), the same on-disk format Codex itself writes and that [ccusage's
+Codex guide](https://ccusage.com/guide/codex/) and
+[mrexodia/agent-cost-dashboard](https://github.com/mrexodia/agent-cost-dashboard)
+both already read.
+
+    teamspend --tools claude-code,codex --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+
+Three honest caveats worth knowing before you trust this number:
+
+- **It's this machine's usage, not your team's.** Same as OpenCode's local
+  files, Codex's rollout logs carry no user or email field anywhere, so
+  teamspend attributes everything it finds to one synthetic user, the OS
+  account that ran the command. Comparing a whole team's Codex spend means
+  running teamspend on each person's machine, or collecting numbers out
+  of band and using [CSV import](#csv-import-for-the-history-a-live-api-cant-reach).
+- **The dollar figure is always marked estimated -- and it's always
+  exactly $0.** Codex's local logs don't even have a `cost: 0`
+  placeholder the way OpenCode's do -- there is no cost field on a
+  `token_count` event at all, only token counts. teamspend bundles no
+  per-token pricing table of its own, so it reports `$0` and marks the
+  result `(estimated)` rather than guessing a dollar figure from a table
+  that would drift from OpenAI's real, negotiated pricing. Token counts
+  (input/output/cache read) are exact; the dollar figure just isn't
+  reported by Codex at all.
+- **Only the last ~7 days are readable.** Codex itself
+  background-compresses any rollout file older than 7 days to `.jsonl.zst`
+  (zstd); teamspend reads plain `.jsonl` only, the same call already made
+  for OpenCode's newer SQLite store, to avoid adding a dependency for a
+  secondary on-disk format. A window reaching back further than that will
+  under-report or come back empty for Codex -- pair it with
+  [CSV import](#csv-import-for-the-history-a-live-api-cant-reach) for
+  anything older.
+
 ## Personal usage mode, for when you don't have admin access
 
 Everything above needs org-admin credentials (`TEAMSPEND_CURSOR_TOKEN`, `TEAMSPEND_CLAUDE_CODE_TOKEN`) because it's pulling a whole team's numbers from a vendor's admin API. If you just want your own personal Claude Code spend and don't have (or don't want to use) org-admin access, use `claude-code-personal` instead of `claude-code` as the tool name:
@@ -217,6 +259,7 @@ This started narrow on purpose: prove the idea on the two tools one real team wa
 
 - [x] GitHub Copilot adapter
 - [x] OpenCode adapter
+- [x] Codex CLI adapter
 - [ ] Non-USD billing support
 
 Want one of these sooner, or a tool that isn't on the list? Open an issue and say so. That's genuinely how the order gets decided.
@@ -266,7 +309,7 @@ The whole comparison is marked incomplete rather than silently reported as compl
 No. It's a local CLI: it calls each vendor's API directly from your machine, prints a summary to your terminal, and writes one JSON report file (`0600` permissions) to your current directory. Nothing is sent to teamspend or any third party.
 
 **Can I use teamspend for tools other than Cursor and Claude Code?**
-Yes, for both. GitHub Copilot is supported -- see ["GitHub Copilot support"](#github-copilot-support) above, including an honest note on how its cost figure is derived since GitHub's own API has no dollar field to report. OpenCode is supported too -- see [OpenCode: local-only, no API key needed](#opencode-local-only-no-api-key-needed) above; it reads OpenCode's local session logs directly, no API key required. A CSV-import fallback still covers any other tool in the meantime, using the same `date,user_email,cost_usd,is_estimated` schema documented above.
+Yes. GitHub Copilot is supported -- see ["GitHub Copilot support"](#github-copilot-support) above, including an honest note on how its cost figure is derived since GitHub's own API has no dollar field to report. OpenCode and Codex CLI are supported too -- see [OpenCode: local-only, no API key needed](#opencode-local-only-no-api-key-needed) and [Codex CLI: local-only, no API key needed](#codex-cli-local-only-no-api-key-needed) above; both read their own local session logs directly, no API key required. A CSV-import fallback still covers any other tool in the meantime, using the same `date,user_email,cost_usd,is_estimated` schema documented above.
 
 **Why does a $0 spend number sometimes show up as "estimated" instead of exact?**
 Some billing tiers (flat-seat Cursor plans, Claude.ai Team/Enterprise seats) don't expose true per-user cost through the vendor's own Admin API and report an exact-looking `$0` even for users with real activity. teamspend detects a `$0` cost paired with non-zero token or request counts and flags it as estimated rather than presenting a misleading exact zero. See "Success stories" below for the two independent bug reports in other tools that led to this fix.
