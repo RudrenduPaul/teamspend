@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "teamspend"
-version = "0.1.2"
-description = "Compare AI coding tool spend before and after a migration -- Cursor vs Claude Code, real numbers pulled from each vendor's own admin API, one command, zero runtime dependencies."
+version = "0.2.0"
+description = "Compare AI coding tool spend before and after a migration -- Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI, real numbers pulled from each vendor's own API or local logs, one command, zero runtime dependencies."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
@@ -13,7 +13,7 @@ authors = [
   { name = "Rudrendu Paul" },
   { name = "Sourav Nandy" },
 ]
-keywords = ["cli", "ai-coding-agents", "cost", "finops", "cursor", "claude-code", "github-copilot"]
+keywords = ["cli", "ai-coding-agents", "cost", "finops", "cursor", "claude-code", "github-copilot", "opencode", "codex", "cost-tracking"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

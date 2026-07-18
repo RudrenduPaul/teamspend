@@ -9,6 +9,8 @@
 
 **Your AI coding tools will never tell you if switching between them actually saved money. teamspend does, in one command.**
 
+Six tools now, not two: Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI, plus a credential-free personal mode for anyone without admin access.
+
     npx teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 <!-- TODO: record a real terminal capture (asciinema or a short GIF) of the command above
@@ -293,21 +295,25 @@ teamspend is a command-line tool that answers one question: **when a team moves 
 
 It exists because no vendor's dashboard can answer that question, structurally. Cursor's Admin API reports Cursor spend. Anthropic's Claude Enterprise Analytics API reports Claude Code spend. Neither has a reason to show a competitor's number next to its own, so a team mid-migration is left opening two dashboards and doing the subtraction by hand. teamspend does the same thing a `diff` does for two files: it pulls both sides through the same normalized schema and prints one honest delta.
 
-It is deliberately narrow. teamspend does not run continuously, does not host a dashboard, and does not track more than a before/after window for two tools at a time (Cursor and Claude Code, in v0.1). It is a single command that answers a single question and exits.
+It is deliberately narrow. teamspend does not run continuously, does not host a dashboard, and does not track more than a before/after window for two tools at a time. It is a single command that answers a single question and exits.
+
+**Why this matters right now.** AI coding agent spend has stopped being a rounding error. Uber's CTO disclosed to The Information that the company's engineering org burned through its entire 2026 AI tooling budget in about four months, as Claude Code adoption climbed from 32% to 84% across roughly 5,000 engineers ([Forbes](https://www.forbes.com/sites/janakirammsv/2026/05/17/uber-burns-its-2026-ai-budget-in-four-months-on-claude-code/), [Fortune](https://fortune.com/2026/05/26/uber-coo-ai-spending-tokens-claude-code/)) -- Uber's COO put it plainly: "it's very hard to draw a line between one of those stats and producing 25% more useful consumer features." Microsoft's Experiences and Devices division canceled internal Claude Code licenses and moved engineers to GitHub Copilot CLI after costs ran past its annual AI budget ([The Verge](https://www.theverge.com/tech/930447/microsoft-claude-code-discontinued-notepad), reported onward by [Windows Central](https://www.windowscentral.com/microsoft/microsoft-cancels-claude-code-licenses-shifting-developers-to-github-copilot-cli-a-move-likely-driven-by-financial-motives)). A FinOps survey of 127 enterprise agentic AI deployments found 73% went over budget, some by up to 2.4x ([TechTimes](https://www.techtimes.com/articles/319687/20260704/claude-enterprise-spend-controls-arrive-agentic-ai-bills-blow-past-budgets.htm), [beri.net](https://www.beri.net/article/ai-finops-2026-73-percent-blow-budget-cfo-fix)). Every vendor answered with its own budget controls this year: Claude Enterprise shipped spend-threshold alerts, Cursor added team-level dollar caps, GitHub Copilot added org spending limits. None of them will ever show you a number from a competitor's tool next to their own. That gap is exactly what teamspend fills, and it's why the tool grew from two admin-API adapters to six real ways to pull a cost number.
 
 ## How teamspend compares
 
 This is a narrow tool built for one specific job. It is not trying to replace the two projects below, and if what you actually need is what they do well, use them instead.
 
-| | teamspend | [tokscale](https://github.com/junhoyeo/tokscale) | [Vantage](https://www.vantage.sh) |
-|---|---|---|---|
-| What it answers | "What did our team's spend change by, across a migration between two tools?" | "How much have I personally used across 40+ coding-agent CLIs?" | "What is my org spending across cloud, SaaS, and AI, all in one console?" |
-| Audience | The person who has to answer for a team's AI tool bill | An individual developer tracking their own usage | A funded platform team consolidating multi-cloud cost |
-| Cursor + Claude Code cost data | Yes, via each vendor's own Admin API | Yes, via 40+ tool integrations including Cursor and Claude Code | Yes, both ship as live connectors on Vantage's own site |
-| Team budget / before-after migration view | Yes, this is the entire product | Not requested by its own community as of this writing | Not migration-specific; broader cost-allocation platform |
-| Scale and backing | New, single-purpose OSS project | 4,400+ stars, 425 forks, MIT-licensed, actively maintained | $25M raised (seed + Series A), commercial platform |
+| | teamspend | [tokscale](https://github.com/junhoyeo/tokscale) | [codeburn](https://github.com/getagentseal/codeburn) | [Vantage](https://www.vantage.sh) |
+|---|---|---|---|---|
+| What it answers | "What did our team's spend change by, across a migration between two tools?" | "How much have I personally used across 40+ coding-agent CLIs?" | "What am I spending, broken down by model, project, and task, across the tools I run?" | "What is my org spending across cloud, SaaS, and AI, all in one console?" |
+| Audience | The person who has to answer for a team's AI tool bill | An individual developer tracking their own usage | An individual developer wanting a local cost breakdown | A funded platform team consolidating multi-cloud cost |
+| Tool coverage | 6: Cursor, Claude Code, Copilot, OpenCode, Codex, plus a personal mode | 40+ tool integrations including Cursor and Claude Code | 31 tools and agents, including Cursor, Claude Code, Codex, Gemini | Cursor and Anthropic ship as live connectors |
+| Team budget / before-after migration view | Yes, this is the entire product | Not requested by its own community as of this writing | No, single-machine local tracking, not a team admin-API pull | Not migration-specific; broader cost-allocation platform |
+| Scale and backing | New, single-purpose OSS project | 4,400+ stars, 425 forks, MIT-licensed, actively maintained | 8,700+ stars, 680+ forks, free and local-first | $25M raised (seed + Series A), commercial platform |
 
 **[tokscale](https://github.com/junhoyeo/tokscale)** is a genuinely good project: 4,400+ stars, tracks personal token usage across 40+ coding-agent tools with a leaderboard and contribution graph. Checking its last 100 issues turns up zero requests for team budgets, manager dashboards, or spend rollups, because that's not the product it's building. If what you want is a personal usage tracker across every AI CLI you use, use tokscale. teamspend exists for a different question, the one a team's budget owner asks, not the one an individual contributor asks.
+
+**[codeburn](https://github.com/getagentseal/codeburn)** is the closest thing to real competition teamspend has: free, local-first, and it already breaks cost down by model, project, and task across more tools than teamspend covers. If what you want is a personal, single-machine cost breakdown across a wide tool list, codeburn does that better than teamspend does. What it doesn't do is pull from a vendor's admin API to answer the team-level, before-after migration question, which is the one thing teamspend was built for.
 
 **[Vantage](https://www.vantage.sh)** already ships live Cursor and Anthropic connectors as part of a broader cloud/SaaS/AI cost platform. If you're already consolidating your full cloud bill through Vantage, it's a solid choice and covers more ground than teamspend ever will. teamspend is for the narrower case: a lightweight, single-purpose tool for one migration decision, without adopting a full cost-management platform to get there.
 
@@ -329,6 +335,9 @@ Yes. GitHub Copilot is supported -- see ["GitHub Copilot support"](#github-copil
 
 **Why does a $0 spend number sometimes show up as "estimated" instead of exact?**
 Some billing tiers (flat-seat Cursor plans, Claude.ai Team/Enterprise seats) don't expose true per-user cost through the vendor's own Admin API and report an exact-looking `$0` even for users with real activity. teamspend detects a `$0` cost paired with non-zero token or request counts and flags it as estimated rather than presenting a misleading exact zero. See "Success stories" below for the two independent bug reports in other tools that led to this fix.
+
+**Does teamspend tell me if the money we spent was worth it?**
+No, and it never will pretend to. No vendor, not Anthropic, not Cursor, not GitHub, exposes whether a given session produced good code or wasted a budget. teamspend answers "what did this cost" with a real number pulled straight from the source; it does not and cannot answer "was it worth it." The [session-level breakdown](#session-level-cost-breakdown) gets you as close as an honest tool can: cost per session, not cost per outcome.
 
 ## Contributing
 

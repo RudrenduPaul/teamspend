@@ -1,8 +1,8 @@
 # teamspend (Python)
 
-Compare AI coding tool spend before and after a migration -- Cursor vs
-Claude Code, real numbers pulled from each vendor's own admin API, one
-command.
+Compare AI coding tool spend before and after a migration -- Cursor,
+Claude Code, GitHub Copilot, OpenCode, and Codex CLI, real numbers pulled
+from each vendor's own API or local logs, one command.
 
 [![PyPI version](https://img.shields.io/pypi/v/teamspend.svg)](https://pypi.org/project/teamspend/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/RudrenduPaul/teamspend/blob/main/LICENSE)
@@ -100,6 +100,55 @@ regardless of whether a seat price was supplied -- see the project
 [README's "GitHub Copilot support" section](https://github.com/RudrenduPaul/teamspend#github-copilot-support)
 and [docs/concepts.md](https://github.com/RudrenduPaul/teamspend/blob/main/docs/concepts.md#copilots-usage-based-report-pagination-and-cost-derivation)
 for the full mechanics.
+
+## OpenCode and Codex CLI: local-only, no API key needed
+
+```bash
+teamspend --tools claude-code,opencode --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+teamspend --tools claude-code,codex --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```
+
+Neither [OpenCode](https://github.com/anomalyco/opencode) nor
+[Codex CLI](https://github.com/openai/codex) has an admin, team, or
+billing API -- both are local CLIs, so teamspend reads their own local
+session logs directly off disk instead: `~/.local/share/opencode/storage/message/`
+for OpenCode, `~/.codex/sessions/YYYY/MM/DD/` for Codex. No credential,
+no network call for either. Both results attribute everything to the
+single local user running the command, not a team, and are always marked
+`is_estimated`: OpenCode stores `cost: 0` for most models in its own
+logs, and Codex's local data has no cost field at all, only exact token
+counts. Codex also only keeps roughly the last 7 days of logs readable
+before background-compressing them. See the project README's
+[OpenCode](https://github.com/RudrenduPaul/teamspend#opencode-local-only-no-api-key-needed)
+and [Codex CLI](https://github.com/RudrenduPaul/teamspend#codex-cli-local-only-no-api-key-needed)
+sections for the full mechanics and caveats.
+
+## Personal usage mode, for when you don't have admin access
+
+```bash
+teamspend --tools claude-code-personal,claude-code-personal --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```
+
+If you just want your own personal Claude Code spend and don't have (or
+don't want to use) org-admin access, use `claude-code-personal` instead
+of `claude-code`. It reads Claude Code's own local JSONL session logs
+straight off disk, no API key, no network call, no admin access needed --
+just the logs Claude Code already writes on your machine.
+
+## Session-level cost breakdown
+
+```bash
+teamspend --tools claude-code-personal,claude-code-personal --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30 --breakdown session
+```
+
+Add `--breakdown session` to break a flat total down by session, using
+the `sessionId`/`sessionID` each log entry already carries -- available
+for `claude-code-personal` and `opencode` only, since `cursor`,
+`claude-code`, and `copilot` pull from admin APIs that return per-user
+aggregates with no session field to group by. A session is the most
+honest proxy teamspend can offer for "cost per task" -- it is not a
+measure of whether that session's output was actually good, since no
+vendor exposes that.
 
 ## Using the library instead of the CLI
 
@@ -231,7 +280,7 @@ day. Rows are aggregated per `user_email`.
 
 ## Security
 
-teamspend needs org-admin-level credentials for the tools it queries --
+The three admin-API tools need org-admin-level credentials --
 `TEAMSPEND_CURSOR_TOKEN` (Cursor Admin API), `TEAMSPEND_CLAUDE_CODE_TOKEN`
 (Anthropic's Claude Enterprise Analytics API), and/or
 `TEAMSPEND_COPILOT_TOKEN` + `TEAMSPEND_COPILOT_ORG` (GitHub Copilot usage
@@ -240,7 +289,9 @@ metrics API) -- read only from environment variables via `os.environ.get()` in
 or included in the JSON report or terminal output. A 401/403 from either
 vendor's API raises `AuthenticationError` naming which environment
 variable to check; the credential value itself never appears in that
-message, a log line, or a traceback.
+message, a log line, or a traceback. `opencode`, `codex`, and
+`claude-code-personal` need no credential at all -- they read local
+files only, never a network call.
 
 The one other untrusted input this package reads is an imported CSV file
 (`--before-csv`/`--after-csv`): `adapters/csv_import.py` strips C0
