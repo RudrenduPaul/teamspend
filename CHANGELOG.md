@@ -1,23 +1,28 @@
 # Changelog
 
 All notable changes to teamspend are documented in this file. This
-changelog covers both distributions -- the npm package (`teamspend-cli`,
-JS/TS, formerly published as `teamspend`) and the PyPI package
-(`teamspend`, Python) -- since they talk to the same six data sources and
-compute the same before/after delta; entries note which distribution they
-apply to.
+changelog covers both distributions -- the npm package and the PyPI
+package, both now named `teamspend-cli` (formerly published as plain
+`teamspend` on both registries) -- since they talk to the same six data
+sources and compute the same before/after delta; entries note which
+distribution they apply to.
 
-## [npm: renamed to teamspend-cli] - 2026-07-18
+## [renamed to teamspend-cli on both registries] - 2026-07-18
 
-The npm package name changed from `teamspend` to `teamspend-cli`, matching
-the naming convention used by this maintainer's other packages. Same
-maintainer, same repo, same code -- only the npm package name changed. The
-old `teamspend` name is deprecated (`npm deprecate`) and points installers
-at `teamspend-cli`; it is not removed, so anything already depending on it
-keeps working, just without future updates. The installed command is
-`teamspend` either way -- this rename only affects the name you pass to
-`npm install`/`npx`. The PyPI package name is unaffected and remains
-`teamspend`.
+Both the npm package and the PyPI package changed name from `teamspend` to
+`teamspend-cli`, matching the naming convention used by this maintainer's
+other packages. Same maintainer, same repo, same code -- only the package
+names changed. The installed command is `teamspend` either way -- this
+rename only affects the name you pass to `npm install`/`npx`/`pip install`.
+
+- **npm:** the old `teamspend` name is deprecated (`npm deprecate`) and
+  points installers at `teamspend-cli`; it is not removed, so anything
+  already depending on it keeps working, just without future updates.
+- **PyPI:** the old `teamspend` package's final release (0.2.2) rewrites
+  its own README to point installers at `teamspend-cli` and ships no new
+  functionality beyond that redirect. PyPI has no native deprecation flag,
+  so a final release carrying the redirect notice is the standard
+  convention for a PyPI package rename.
 
 ## [0.2.1] - 2026-07-18
 

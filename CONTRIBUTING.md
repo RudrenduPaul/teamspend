@@ -1,13 +1,13 @@
 # Contributing to teamspend
 
 teamspend ships two independently maintained, equally first-class
-distributions of the same tool: an npm package (`teamspend-cli`,
-TypeScript, repo root) and a PyPI package (`teamspend`, Python, `python/`).
-Both talk to the same six data sources (Cursor, Claude Code, GitHub
-Copilot, OpenCode, Codex CLI, plus a credential-free personal mode) and
-are expected to produce the same normalized numbers against the same
-input. Please read this whole file before opening a PR -- which section
-applies depends on which codebase you're touching.
+distributions of the same tool, both named `teamspend-cli`: an npm package
+(TypeScript, repo root) and a PyPI package (Python, `python/`). Both talk
+to the same six data sources (Cursor, Claude Code, GitHub Copilot,
+OpenCode, Codex CLI, plus a credential-free personal mode) and are
+expected to produce the same normalized numbers against the same input.
+Please read this whole file before opening a PR -- which section applies
+depends on which codebase you're touching.
 
 ## Ground rules
 

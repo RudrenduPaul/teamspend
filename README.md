@@ -1,7 +1,7 @@
 # teamspend
 
 [![npm version](https://img.shields.io/npm/v/teamspend-cli.svg)](https://www.npmjs.com/package/teamspend-cli)
-[![PyPI version](https://img.shields.io/pypi/v/teamspend.svg)](https://pypi.org/project/teamspend/)
+[![PyPI version](https://img.shields.io/pypi/v/teamspend-cli.svg)](https://pypi.org/project/teamspend-cli/)
 [![CI](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.3.0-brightgreen.svg)](package.json)
@@ -88,11 +88,12 @@ data sources and compute the same before/after delta.
     npm install -g teamspend-cli
 
     # PyPI -- Python CLI + library (genuine port, not a wrapper around the Node binary)
-    pip install teamspend
+    pip install teamspend-cli
 
-The npm package is named `teamspend-cli` (the older `teamspend` name is
-deprecated -- same maintainer, same repo, just renamed to match this
-project's other packages). Either way, the installed command is `teamspend`.
+Both packages are named `teamspend-cli` (the older plain `teamspend` name
+is deprecated on both registries -- same maintainer, same repo, just
+renamed to match this project's other packages). Either way, the installed
+command is `teamspend`.
 
 Give it the two API keys for the tools you're comparing:
 
