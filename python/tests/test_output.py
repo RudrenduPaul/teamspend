@@ -4,17 +4,38 @@ import stat
 
 from teamspend.compare import PeriodOutcome, build_comparison
 from teamspend.output import render_terminal_summary, scaffold_gitignore, write_json_report
-from teamspend.types import AdapterResult, DateWindow
+from teamspend.types import AdapterResult, DateWindow, UserUsage
 
 
-def _result(source, total_cost_usd):
+def _result(source, total_cost_usd, users=None):
     return AdapterResult(
         source=source,
         window=DateWindow("2026-01-01", "2026-01-31"),
         total_cost_usd=total_cost_usd,
         is_estimated=False,
-        users=[],
+        users=users or [],
     )
+
+
+def test_strips_control_characters_from_a_user_email_sourced_from_the_live_api_not_just_csv_import():
+    malicious_user = UserUsage(
+        user_id="u_evil",
+        user_email="\x1b[31mevil@x.com",
+        input_tokens=None,
+        output_tokens=None,
+        cache_read_tokens=None,
+        cache_write_tokens=None,
+        requests=None,
+        cost_usd=999,
+        is_estimated=False,
+    )
+    before = PeriodOutcome("before", "cursor", _result("cursor", 999, [malicious_user]), None)
+    after = PeriodOutcome("after", "claude-code", _result("claude-code", 0), None)
+    report = build_comparison(before, after)
+
+    output = render_terminal_summary(report)
+    assert "\x1b" not in output
+    assert "evil@x.com" in output
 
 
 def test_shows_data_unavailable_for_a_failed_period_instead_of_silently_omitting_it():

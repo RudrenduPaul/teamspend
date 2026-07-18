@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
+from .adapters.csv_import import strip_control_chars
 from .compare import ComparisonReport, PeriodOutcome
 
 GITIGNORE_ENTRY = "teamspend-snapshot-*.json"
@@ -87,7 +88,11 @@ def render_terminal_summary(report: ComparisonReport) -> str:
         lines.append("")
         lines.append("TOP SPENDERS (across both periods)")
         for i, spender in enumerate(report.top_spenders_across_both):
-            email = spender.user_email or "(unknown)"
+            # CSV-sourced emails are already stripped in csv_import.py; API-sourced
+            # emails weren't, leaving an inconsistent path to this same unsanitized
+            # terminal print -- strip here too so a compromised vendor response
+            # can't inject terminal escape sequences via user_email either.
+            email = strip_control_chars(spender.user_email) if spender.user_email else "(unknown)"
             lines.append(
                 f"  {i + 1}. {email}     {spender.period}      {_format_usd(spender.cost_usd)}"
             )

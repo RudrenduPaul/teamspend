@@ -25,12 +25,12 @@ EXPECTED_COLUMNS = ["date", "user_email", "cost_usd", "is_estimated"]
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f]")
 
 
-def _strip_control_chars(value: str) -> str:
+def strip_control_chars(value: str) -> str:
     """
     Strips C0 control characters (0x00-0x1f), including ANSI/OSC terminal
-    escape sequences, from a CSV cell value. Without this, a crafted
-    user_email in an imported CSV could inject escape codes into the
-    non-JSON terminal summary output.
+    escape sequences, from a string. Without this, a crafted user_email --
+    whether from an imported CSV or a live admin API response -- could
+    inject escape codes into the non-JSON terminal summary output.
     """
     return _CONTROL_CHAR_RE.sub("", value)
 
@@ -52,7 +52,7 @@ def _parse_csv(text: str) -> List[Dict[str, str]]:
 
     rows: List[Dict[str, str]] = []
     for line in lines[1:]:
-        cells = [_strip_control_chars(c.strip()) for c in line.split(",")]
+        cells = [strip_control_chars(c.strip()) for c in line.split(",")]
 
         def cell(idx: int) -> str:
             return cells[idx] if idx < len(cells) else ""
