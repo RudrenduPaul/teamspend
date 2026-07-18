@@ -27,7 +27,7 @@ jobs:
         env:
           TEAMSPEND_CURSOR_TOKEN: ${{ secrets.TEAMSPEND_CURSOR_TOKEN }}
           TEAMSPEND_CLAUDE_CODE_TOKEN: ${{ secrets.TEAMSPEND_CLAUDE_CODE_TOKEN }}
-        run: npx teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30 --json > snapshot.json
+        run: npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30 --json > snapshot.json
       - uses: actions/upload-artifact@v4
         with:
           name: teamspend-snapshot

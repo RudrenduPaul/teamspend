@@ -7,7 +7,7 @@ from each vendor's own API or local logs, one command.
 [![PyPI version](https://img.shields.io/pypi/v/teamspend.svg)](https://pypi.org/project/teamspend/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/RudrenduPaul/teamspend/blob/main/LICENSE)
 [![Python versions](https://img.shields.io/pypi/pyversions/teamspend.svg)](https://pypi.org/project/teamspend/)
-[![npm version](https://img.shields.io/npm/v/teamspend.svg)](https://www.npmjs.com/package/teamspend)
+[![npm version](https://img.shields.io/npm/v/teamspend-cli.svg)](https://www.npmjs.com/package/teamspend-cli)
 
 ## Why this exists
 
@@ -35,11 +35,12 @@ uv add teamspend
 
 Zero runtime dependencies: the standard library's `urllib` handles every
 admin-API call. The complementary JS/TS distribution installs the same way
-on the npm side: `npm install -g teamspend` (or `npx teamspend ...` to run
-it once without installing) -- see the
+on the npm side: `npm install -g teamspend-cli` (or `npx teamspend-cli ...`
+to run it once without installing; the older `teamspend` npm name is
+deprecated in favor of `teamspend-cli`, same maintainer and repo) -- see the
 [project README](https://github.com/RudrenduPaul/teamspend#readme) for
-that package. Both are first-class, maintained together; neither is
-deprecated in favor of the other.
+that package. Both distributions (this PyPI package and the npm package)
+are first-class and maintained together.
 
 ## Quickstart
 

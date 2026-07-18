@@ -1,6 +1,6 @@
 # teamspend
 
-[![npm version](https://img.shields.io/npm/v/teamspend.svg)](https://www.npmjs.com/package/teamspend)
+[![npm version](https://img.shields.io/npm/v/teamspend-cli.svg)](https://www.npmjs.com/package/teamspend-cli)
 [![PyPI version](https://img.shields.io/pypi/v/teamspend.svg)](https://pypi.org/project/teamspend/)
 [![CI](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -11,7 +11,7 @@
 
 Six tools now, not two: Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI, plus a credential-free personal mode for anyone without admin access.
 
-    npx teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+    npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 <!-- TODO: record a real terminal capture (asciinema or a short GIF) of the command above
      against a real Cursor + Claude Code org and embed it here. Capture script:
@@ -47,7 +47,7 @@ More teams are running more than one AI coding tool at once, or moving between t
 
 ## See it in action
 
-    npx teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+    npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 Example output (shape shown below; your real numbers come from your own org's API data):
 
@@ -81,15 +81,18 @@ That's the whole product. One command, one honest number, zero spreadsheets.
 ## Get started in under a minute
 
 teamspend ships two independent, equally first-class packages -- pick
-whichever fits your toolchain, or install both. Neither is deprecated in
-favor of the other; they talk to the same two admin APIs and compute the
-same before/after delta.
+whichever fits your toolchain, or install both. They talk to the same six
+data sources and compute the same before/after delta.
 
     # npm -- JavaScript/TypeScript CLI + library
-    npm install -g teamspend
+    npm install -g teamspend-cli
 
     # PyPI -- Python CLI + library (genuine port, not a wrapper around the Node binary)
     pip install teamspend
+
+The npm package is named `teamspend-cli` (the older `teamspend` name is
+deprecated -- same maintainer, same repo, just renamed to match this
+project's other packages). Either way, the installed command is `teamspend`.
 
 Give it the two API keys for the tools you're comparing:
 
@@ -128,7 +131,7 @@ A tool that touches your team's spend and email data should earn that trust in t
     date,user_email,cost_usd,is_estimated
     2025-11-01,jane@example.com,12.50,false
 
-    npx teamspend --tools cursor,claude-code --before 2025-11-01:2025-11-30 --after 2026-06-01:2026-06-30 --before-csv ./before.csv
+    npx teamspend-cli --tools cursor,claude-code --before 2025-11-01:2025-11-30 --after 2026-06-01:2026-06-30 --before-csv ./before.csv
 
 ## GitHub Copilot support
 
@@ -136,7 +139,7 @@ A tool that touches your team's spend and email data should earn that trust in t
     export TEAMSPEND_COPILOT_ORG=<your GitHub org login>
     export TEAMSPEND_COPILOT_SEAT_PRICE_USD=19   # optional, see below
 
-    npx teamspend --tools cursor,copilot --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+    npx teamspend-cli --tools cursor,copilot --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 **Credential:** `TEAMSPEND_COPILOT_TOKEN` needs the `read:org` scope (a
 classic PAT) or the fine-grained "View Organization Copilot Metrics"
@@ -250,7 +253,7 @@ Three honest caveats worth knowing before you trust this number:
 
 Everything above needs org-admin credentials (`TEAMSPEND_CURSOR_TOKEN`, `TEAMSPEND_CLAUDE_CODE_TOKEN`) because it's pulling a whole team's numbers from a vendor's admin API. If you just want your own personal Claude Code spend and don't have (or don't want to use) org-admin access, use `claude-code-personal` instead of `claude-code` as the tool name:
 
-    npx teamspend --tools claude-code-personal,claude-code-personal --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+    npx teamspend-cli --tools claude-code-personal,claude-code-personal --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 This mode reads Claude Code's own local JSONL session logs straight off disk (`~/.claude/projects/**/*.jsonl` by default, or wherever `CLAUDE_CONFIG_DIR`/`XDG_CONFIG_HOME` points). No API key, no network call, no admin access -- it needs nothing but the logs Claude Code already writes on your machine. It reports on the single local user running the command, not a team.
 
@@ -260,7 +263,7 @@ Two honest caveats: it only sees what's on the machine you run it on, and not ev
 
 A flat total answers "what did we spend," not "what's driving it." Add `--breakdown session` to break that total down by session/conversation -- the same log data `claude-code-personal` and `opencode` already read, just grouped by the `sessionId`/`sessionID` each log entry already carries, instead of summed into one number:
 
-    npx teamspend --tools claude-code-personal,claude-code-personal --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30 --breakdown session
+    npx teamspend-cli --tools claude-code-personal,claude-code-personal --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30 --breakdown session
 
 This adds a per-session table (top 10 by cost) to the terminal summary, and the full session array to the JSON report -- both opt-in. Without the flag, output is byte-for-byte what it always was.
 

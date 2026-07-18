@@ -1,10 +1,23 @@
 # Changelog
 
 All notable changes to teamspend are documented in this file. This
-changelog covers both distributions -- the npm package (`teamspend`,
-JS/TS) and the PyPI package (`teamspend`, Python) -- since they talk to
-the same two admin APIs and compute the same before/after delta; entries
-note which distribution they apply to.
+changelog covers both distributions -- the npm package (`teamspend-cli`,
+JS/TS, formerly published as `teamspend`) and the PyPI package
+(`teamspend`, Python) -- since they talk to the same six data sources and
+compute the same before/after delta; entries note which distribution they
+apply to.
+
+## [npm: renamed to teamspend-cli] - 2026-07-18
+
+The npm package name changed from `teamspend` to `teamspend-cli`, matching
+the naming convention used by this maintainer's other packages. Same
+maintainer, same repo, same code -- only the npm package name changed. The
+old `teamspend` name is deprecated (`npm deprecate`) and points installers
+at `teamspend-cli`; it is not removed, so anything already depending on it
+keeps working, just without future updates. The installed command is
+`teamspend` either way -- this rename only affects the name you pass to
+`npm install`/`npx`. The PyPI package name is unaffected and remains
+`teamspend`.
 
 ## [0.2.1] - 2026-07-18
 

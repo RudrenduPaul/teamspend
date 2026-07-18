@@ -3,18 +3,21 @@
 teamspend answers one question: when a team moves from one AI coding tool
 to another, or runs two at once, what did that actually cost, in real
 dollars, pulled straight from each vendor's own admin API? It ships as two
-independent, equally first-class packages: an npm package (`teamspend`,
+independent, equally first-class packages: an npm package (`teamspend-cli`,
 JavaScript/TypeScript) and a PyPI package (`teamspend`, Python). Pick
-whichever fits your toolchain, or install both.
+whichever fits your toolchain, or install both. (The npm package's older
+`teamspend` name is deprecated in favor of `teamspend-cli` -- same
+maintainer and repo, just renamed to match this project's other packages.
+The installed command is `teamspend` either way.)
 
 ## Install
 
 **npm (JS/TS CLI):**
 
 ```bash
-npm install -g teamspend
+npm install -g teamspend-cli
 # or run it once without installing:
-npx teamspend --tools cursor,claude-code --before ... --after ...
+npx teamspend-cli --tools cursor,claude-code --before ... --after ...
 ```
 
 **pip (Python library + CLI):**
@@ -53,7 +56,7 @@ export TEAMSPEND_CURSOR_TOKEN=<your Cursor Admin API key>
 export TEAMSPEND_CLAUDE_CODE_TOKEN=<your Anthropic Admin/Analytics API key>
 
 # npm CLI
-npx teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 # Python CLI (after `pip install teamspend`)
 teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
