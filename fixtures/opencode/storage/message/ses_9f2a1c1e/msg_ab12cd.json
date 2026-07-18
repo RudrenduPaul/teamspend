@@ -1,0 +1,19 @@
+{
+  "id": "msg_ab12cd",
+  "sessionID": "ses_9f2a1c1e",
+  "role": "assistant",
+  "time": { "created": 1780653600000, "completed": 1780653612000 },
+  "parentID": "msg_ab12cc",
+  "modelID": "claude-sonnet-4-5",
+  "providerID": "anthropic",
+  "mode": "build",
+  "path": { "cwd": "/Users/dev/project", "root": "/Users/dev/project" },
+  "cost": 0.0842,
+  "tokens": {
+    "input": 18240,
+    "output": 2310,
+    "reasoning": 0,
+    "cache": { "read": 12000, "write": 3400 }
+  },
+  "finish": "stop"
+}

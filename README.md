@@ -30,6 +30,7 @@ More teams are running more than one AI coding tool at once, or moving between t
 - [Built to be trusted, not just used](#built-to-be-trusted-not-just-used)
 - [CSV import, for the history a live API can't reach](#csv-import-for-the-history-a-live-api-cant-reach)
 - [GitHub Copilot support](#github-copilot-support)
+- [OpenCode: local-only, no API key needed](#opencode-local-only-no-api-key-needed)
 - [Roadmap](#roadmap)
 - [Good to know before you run it](#good-to-know-before-you-run-it)
 - [What is teamspend, and why does it exist](#what-is-teamspend-and-why-does-it-exist)
@@ -111,9 +112,9 @@ A tool that touches your team's spend and email data should earn that trust in t
 | | |
 |---|---|
 | Runtime dependencies | Zero |
-| Package size | 27.3 kB packed, 88.3 kB unpacked |
+| Package size | 33.3 kB packed, 107.2 kB unpacked |
 | Cold install to first response | Under 1 second, measured with a cleared npm/npx cache |
-| Tests | 58 passing, 98.2% line coverage |
+| Tests | TESTCOUNT_PLACEHOLDER passing, 98.2% line coverage |
 | Known vulnerabilities | Zero, per `npm audit` |
 | File permissions | Report files are owner-only (`0600`) and auto-gitignored, since they hold per-user emails and spend |
 
@@ -168,12 +169,43 @@ one. See [docs/concepts.md](./docs/concepts.md#copilots-usage-based-report-pagin
 for the full mechanics, including why one comparison window means one API
 call per calendar day rather than one call for the whole range.
 
+## OpenCode: local-only, no API key needed
+
+[OpenCode](https://github.com/anomalyco/opencode) (formerly `sst/opencode`)
+has no admin, team, or billing API at all -- it's a local CLI with no
+organization-level usage endpoint, confirmed against its own README. There
+is nothing for `TEAMSPEND_OPENCODE_TOKEN` to authenticate, so it doesn't
+exist; teamspend instead reads OpenCode's own local session logs directly
+off disk (`~/.local/share/opencode/storage/message/`, or
+`$OPENCODE_DATA_DIR` if set), the same file format OpenCode itself writes
+and that [ccusage's OpenCode guide](https://ccusage.com/guide/opencode/)
+and [tokscale](https://github.com/junhoyeo/tokscale) both already read.
+
+    teamspend --tools claude-code,opencode --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+
+Two honest caveats worth knowing before you trust this number:
+
+- **It's this machine's usage, not your team's.** OpenCode's local message
+  files carry no user or email field anywhere -- it's a single-developer
+  tool with no team concept -- so teamspend attributes everything it finds
+  to one synthetic user, the OS account that ran the command. Comparing a
+  whole team's OpenCode spend means running teamspend on each person's
+  machine, or collecting numbers out of band and using [CSV
+  import](#csv-import-for-the-history-a-live-api-cant-reach).
+- **The dollar figure is always marked estimated.** OpenCode itself stores
+  `cost: 0` for most models in its local message files (it has no live
+  pricing table of its own), so teamspend sums whatever cost value OpenCode
+  did record and always shows it as `(estimated)`, never `(exact,
+  usage-based)`, even on the rare message where that field is genuinely
+  populated. Token counts (input/output/cache read/write) are exact --
+  it's only the dollar figure that's approximate.
+
 ## Roadmap
 
 This started narrow on purpose: prove the idea on the two tools one real team was actually migrating between, get it right, then grow it. Next up, roughly in order of how often people ask:
 
 - [x] GitHub Copilot adapter
-- [ ] OpenCode adapter
+- [x] OpenCode adapter
 - [ ] Non-USD billing support
 
 Want one of these sooner, or a tool that isn't on the list? Open an issue and say so. That's genuinely how the order gets decided.
@@ -223,7 +255,7 @@ The whole comparison is marked incomplete rather than silently reported as compl
 No. It's a local CLI: it calls each vendor's API directly from your machine, prints a summary to your terminal, and writes one JSON report file (`0600` permissions) to your current directory. Nothing is sent to teamspend or any third party.
 
 **Can I use teamspend for tools other than Cursor and Claude Code?**
-GitHub Copilot is also supported now -- see ["GitHub Copilot support"](#github-copilot-support) above, including an honest note on how its cost figure is derived since GitHub's own API has no dollar field to report. An OpenCode adapter is next on the roadmap; a CSV-import fallback already lets you supply spend data for any other tool in the meantime, using the same `date,user_email,cost_usd,is_estimated` schema documented above.
+Yes, for both. GitHub Copilot is supported -- see ["GitHub Copilot support"](#github-copilot-support) above, including an honest note on how its cost figure is derived since GitHub's own API has no dollar field to report. OpenCode is supported too -- see [OpenCode: local-only, no API key needed](#opencode-local-only-no-api-key-needed) above; it reads OpenCode's local session logs directly, no API key required. A CSV-import fallback still covers any other tool in the meantime, using the same `date,user_email,cost_usd,is_estimated` schema documented above.
 
 **Why does a $0 spend number sometimes show up as "estimated" instead of exact?**
 Some billing tiers (flat-seat Cursor plans, Claude.ai Team/Enterprise seats) don't expose true per-user cost through the vendor's own Admin API and report an exact-looking `$0` even for users with real activity. teamspend detects a `$0` cost paired with non-zero token or request counts and flags it as estimated rather than presenting a misleading exact zero. See "Success stories" below for the two independent bug reports in other tools that led to this fix.

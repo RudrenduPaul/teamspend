@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { fetchCursorSpend } from "./adapters/cursor.js";
 import { fetchClaudeCodeSpend } from "./adapters/claude-code.js";
 import { fetchCopilotSpend } from "./adapters/copilot.js";
+import { fetchOpenCodeSpend } from "./adapters/opencode.js";
 import { importFromCSV } from "./adapters/csv-import.js";
 import { buildComparison, type PeriodOutcome } from "./compare.js";
 import {
@@ -15,7 +16,7 @@ import {
 import { InvalidCliArgError, DataUnavailableError } from "./errors.js";
 import type { DateWindow, ToolId } from "./schema.js";
 
-const KNOWN_TOOLS: ToolId[] = ["cursor", "claude-code", "copilot"];
+const KNOWN_TOOLS: ToolId[] = ["cursor", "claude-code", "copilot", "opencode"];
 const DATE_RANGE_RE = /^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/;
 
 function parseDateRange(flag: string, value: string): DateWindow {
@@ -101,6 +102,12 @@ async function fetchTool(
         org,
         parseCopilotSeatPrice(),
       );
+    }
+    if (tool === "opencode") {
+      // No API key: opencode has no admin/team API, only local per-machine
+      // session logs (see src/adapters/opencode.ts for how those are
+      // resolved and read).
+      return await fetchOpenCodeSpend(window);
     }
     throw new InvalidCliArgError(`No adapter for tool "${tool}"`);
   } catch (error) {

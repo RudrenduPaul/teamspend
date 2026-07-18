@@ -70,15 +70,21 @@ pytest
 
 ## Adding a new tool adapter
 
-Both the roadmap items on the project README (GitHub Copilot, OpenCode)
-and any other admin-API integration should follow the existing adapter
-shape:
+The remaining roadmap item on the project README (GitHub Copilot) and any
+other admin-API integration should follow the existing adapter shape:
 
 1. A `fetch_<tool>_spend(window, api_key) -> AdapterResult` function (or
    `fetch<Tool>Spend` in TypeScript) that calls `fetchWithRetry`/
    `fetch_with_retry`, validates every field with `requireField`/
    `require_field`, and applies the tool's own suspicious-zero rule if one
-   exists.
+   exists. If the tool has no admin API at all and only exposes local
+   session/usage logs on disk (OpenCode is the reference implementation --
+   `src/adapters/opencode.ts` / `python/src/teamspend/adapters/opencode.py`),
+   skip the `api_key` parameter and the retry wrapper entirely, resolve a
+   data directory instead (respecting a documented env-var override the
+   same way `OPENCODE_DATA_DIR` is), and raise `DataUnavailableError` when
+   no local store is found at all, not merely when the requested window is
+   empty.
 2. A JSON fixture under `fixtures/` (root, for the TS tests) and
    `python/fixtures/` (copied, for the Python tests) modeled on the real
    vendor API response shape, cited from the vendor's own published docs.

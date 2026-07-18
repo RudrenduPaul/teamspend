@@ -37,6 +37,7 @@ Set the corresponding environment variable before running:
 | Cursor | `TEAMSPEND_CURSOR_TOKEN` | Cursor Admin API key, from your org's Cursor dashboard |
 | Claude Code | `TEAMSPEND_CLAUDE_CODE_TOKEN` | Anthropic Admin/Analytics API key, from the Anthropic Console |
 | GitHub Copilot | `TEAMSPEND_COPILOT_TOKEN`, `TEAMSPEND_COPILOT_ORG` (both required), `TEAMSPEND_COPILOT_SEAT_PRICE_USD` (optional) | A PAT with `read:org` scope (or the fine-grained "View Organization Copilot Metrics" permission) on an org with Copilot Business/Enterprise; `TEAMSPEND_COPILOT_ORG` is your org login |
+| OpenCode | None needed | OpenCode has no admin API -- teamspend reads its local session logs directly. Set `OPENCODE_DATA_DIR` only if yours isn't at the default `~/.local/share/opencode`. |
 
 If you can already see billing for your org on that tool's own dashboard,
 you have the access level teamspend needs. Copilot is the one exception --

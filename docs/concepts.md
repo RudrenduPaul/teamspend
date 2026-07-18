@@ -146,6 +146,57 @@ the API at all. If `--before-csv` (or `--after-csv`) was passed for that
 side, the CLI falls back to CSV import automatically; otherwise the whole
 run reports that side as `DATA UNAVAILABLE`.
 
+## OpenCode: local-file adapter, no admin API
+
+Unlike Cursor and Claude Code, OpenCode has no admin/team/billing API at
+all -- confirmed against its own README, which describes a local CLI with
+no organization-level usage endpoint. `fetchOpenCodeSpend` /
+`fetch_opencode_spend` reads OpenCode's own local session logs directly
+instead of calling anything over the network:
+
+- **Location**: `$OPENCODE_DATA_DIR/storage/message/{sessionID}/msg_{messageID}.json`,
+  one JSON file per message. `OPENCODE_DATA_DIR` may be a single path or a
+  comma-separated list; it defaults to `~/.local/share/opencode`
+  (`%USERPROFILE%\.local\share\opencode` on Windows -- OpenCode uses the
+  same XDG-style relative path on every platform). Verified against
+  [ccusage's OpenCode guide](https://ccusage.com/guide/opencode/) and
+  [tokscale's README](https://github.com/junhoyeo/tokscale), which both
+  document the same path; the per-message fields read
+  (`tokens.input`/`output`/`reasoning`, `tokens.cache.read`/`write`,
+  `cost`) come from OpenCode's own generated SDK types
+  (`packages/sdk/js/src/gen/types.gen.ts`, `AssistantMessage`). A newer
+  SQLite store (`opencode.db`, v1.2+) exists but isn't read yet -- adding a
+  SQLite dependency isn't worth it against this package's zero-runtime-
+  dependency design and Node's `>=18.3.0` floor (`node:sqlite` needs Node
+  22.5+).
+- **Window filtering**: since there's no server-side windowed query, every
+  message file under the resolved data directories is read and filtered
+  client-side by its `time.created` timestamp against the requested
+  `[start, end]` window (inclusive, UTC day boundaries). Only `role:
+  "assistant"` messages carry token/cost data; `role: "user"` messages are
+  skipped.
+- **No suspicious-zero rule -- always estimated instead.** OpenCode stores
+  `cost: 0` in most message files (per ccusage's own docs: "Costs are
+  calculated from token counts using LiteLLM pricing"), and teamspend
+  bundles no per-token pricing table of its own. Rather than guess a dollar
+  figure from a pricing table that would drift from real vendor prices,
+  `fetchOpenCodeSpend` sums whatever `cost` OpenCode itself recorded and
+  unconditionally marks the result `is_estimated`, even on the rare message
+  where that field is genuinely nonzero. Token counts are exact; only the
+  dollar figure is approximate.
+- **One synthetic user per machine, not per team member.** OpenCode's
+  message files carry no user/email field at all. Every message found is
+  attributed to the OS account running teamspend (`os.userInfo().username`
+  / `getpass.getuser()`), never an email. `AdapterResult.users` is at most
+  a single entry.
+- **Missing data dir vs. an inactive window**: no local message store found
+  anywhere (missing data dir, or a resolved dir with zero message files)
+  raises `DataUnavailableError`, the same fallback trigger used elsewhere --
+  if `--*-csv` was passed for that side, the CLI falls back to CSV import.
+  A data dir that exists but simply has no messages inside the requested
+  window is different and legitimate: it returns a normal `AdapterResult`
+  with an empty `users` list and `is_estimated: false`, not an error.
+
 ## CSV import schema
 
 ```
