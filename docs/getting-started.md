@@ -36,6 +36,7 @@ Set the corresponding environment variable before running:
 | --- | --- | --- |
 | Cursor | `TEAMSPEND_CURSOR_TOKEN` | Cursor Admin API key, from your org's Cursor dashboard |
 | Claude Code | `TEAMSPEND_CLAUDE_CODE_TOKEN` | Anthropic Admin/Analytics API key, from the Anthropic Console |
+| OpenCode | None needed | OpenCode has no admin API -- teamspend reads its local session logs directly. Set `OPENCODE_DATA_DIR` only if yours isn't at the default `~/.local/share/opencode`. |
 
 If you can already see billing for your org on that tool's own dashboard,
 you have the access level teamspend needs.

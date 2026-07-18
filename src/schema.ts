@@ -1,5 +1,5 @@
 /** Tools teamspend can pull spend data from in v0.1. */
-export type ToolId = "cursor" | "claude-code";
+export type ToolId = "cursor" | "claude-code" | "opencode";
 
 export interface DateWindow {
   start: string; // YYYY-MM-DD

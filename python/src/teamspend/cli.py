@@ -21,12 +21,13 @@ from typing import List, Optional, Tuple
 from .adapters.claude_code import fetch_claude_code_spend
 from .adapters.csv_import import import_from_csv
 from .adapters.cursor import fetch_cursor_spend
+from .adapters.opencode import fetch_opencode_spend
 from .compare import ComparisonReport, PeriodOutcome, build_comparison
 from .errors import DataUnavailableError, InvalidCliArgError
 from .output import render_terminal_summary, scaffold_gitignore, write_json_report
 from .types import AdapterResult, DateWindow, ToolId
 
-KNOWN_TOOLS: List[ToolId] = ["cursor", "claude-code"]
+KNOWN_TOOLS: List[ToolId] = ["cursor", "claude-code", "opencode"]
 DATE_RANGE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$")
 _VERSION = "0.1.0"
 
@@ -76,6 +77,11 @@ def _fetch_tool(
             if not api_key:
                 raise RuntimeError(f"Missing {env_var}")
             return fetch_claude_code_spend(window, api_key)
+        if tool == "opencode":
+            # No API key: opencode has no admin/team API, only local
+            # per-machine session logs (see adapters/opencode.py for how
+            # those are resolved and read).
+            return fetch_opencode_spend(window)
         raise InvalidCliArgError(f'No adapter for tool "{tool}"')
     except DataUnavailableError:
         if csv_path:
