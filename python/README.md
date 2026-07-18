@@ -4,9 +4,9 @@ Compare AI coding tool spend before and after a migration -- Cursor,
 Claude Code, GitHub Copilot, OpenCode, and Codex CLI, real numbers pulled
 from each vendor's own API or local logs, one command.
 
-[![PyPI version](https://img.shields.io/pypi/v/teamspend.svg)](https://pypi.org/project/teamspend/)
+[![PyPI version](https://img.shields.io/pypi/v/teamspend-cli.svg)](https://pypi.org/project/teamspend-cli/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/RudrenduPaul/teamspend/blob/main/LICENSE)
-[![Python versions](https://img.shields.io/pypi/pyversions/teamspend.svg)](https://pypi.org/project/teamspend/)
+[![Python versions](https://img.shields.io/pypi/pyversions/teamspend-cli.svg)](https://pypi.org/project/teamspend-cli/)
 [![npm version](https://img.shields.io/npm/v/teamspend-cli.svg)](https://www.npmjs.com/package/teamspend-cli)
 
 ## Why this exists
@@ -24,13 +24,13 @@ Node binary.
 ## Install
 
 ```bash
-pip install teamspend
+pip install teamspend-cli
 ```
 
 or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add teamspend
+uv add teamspend-cli
 ```
 
 Zero runtime dependencies: the standard library's `urllib` handles every
@@ -348,3 +348,4 @@ codebase has an obvious counterpart to check in the other. See
 ## License
 
 Apache 2.0.
+
