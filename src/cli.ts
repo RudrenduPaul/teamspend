@@ -4,6 +4,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { fetchCursorSpend } from "./adapters/cursor.js";
 import { fetchClaudeCodeSpend } from "./adapters/claude-code.js";
+import { fetchClaudeCodePersonalUsage } from "./adapters/claude-code-personal.js";
 import { importFromCSV } from "./adapters/csv-import.js";
 import { buildComparison, type PeriodOutcome } from "./compare.js";
 import {
@@ -14,7 +15,7 @@ import {
 import { InvalidCliArgError, DataUnavailableError } from "./errors.js";
 import type { DateWindow, ToolId } from "./schema.js";
 
-const KNOWN_TOOLS: ToolId[] = ["cursor", "claude-code"];
+const KNOWN_TOOLS: ToolId[] = ["cursor", "claude-code", "claude-code-personal"];
 const DATE_RANGE_RE = /^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/;
 
 function parseDateRange(flag: string, value: string): DateWindow {
@@ -68,6 +69,12 @@ async function fetchTool(
     if (tool === "claude-code") {
       if (!apiKey) throw new Error(`Missing ${envVar}`);
       return await fetchClaudeCodeSpend(window, apiKey);
+    }
+    if (tool === "claude-code-personal") {
+      // Deliberately no credential check -- this mode reads Claude Code's
+      // own local JSONL session logs and never calls an admin API, so
+      // TEAMSPEND_CLAUDE_CODE_PERSONAL_TOKEN is never required.
+      return await fetchClaudeCodePersonalUsage(window);
     }
     throw new InvalidCliArgError(`No adapter for tool "${tool}"`);
   } catch (error) {
