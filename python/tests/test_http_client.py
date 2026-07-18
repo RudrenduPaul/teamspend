@@ -1,7 +1,14 @@
+import urllib.request
+
 import pytest
 
 from teamspend.errors import AuthenticationError, RetryExhaustedError, SchemaDriftError
-from teamspend.http_client import TransportError, fetch_with_retry, require_field
+from teamspend.http_client import (
+    TransportError,
+    _SameOriginRedirectHandler,
+    fetch_with_retry,
+    require_field,
+)
 
 from .conftest import ScriptedTransport, json_response
 
@@ -102,3 +109,28 @@ def test_throws_schema_drift_error_when_neither_the_primary_field_nor_any_alias_
 def test_includes_the_tried_alias_names_in_the_error_message_when_aliases_were_passed():
     with pytest.raises(SchemaDriftError, match="month, date"):
         require_field({}, "period", "cursor", ["month", "date"])
+
+
+def test_strips_auth_headers_when_a_redirect_changes_host():
+    handler = _SameOriginRedirectHandler()
+    req = urllib.request.Request(
+        "https://api.cursor.com/admin/usage",
+        headers={"Authorization": "Bearer secret-token", "x-api-key": "secret-key"},
+    )
+    new_request = handler.redirect_request(
+        req, None, 302, "Found", {}, "https://attacker.example/steal"
+    )
+    assert new_request.get_header("Authorization") is None
+    assert new_request.get_header("X-api-key") is None
+
+
+def test_keeps_auth_headers_when_a_redirect_stays_on_the_same_host():
+    handler = _SameOriginRedirectHandler()
+    req = urllib.request.Request(
+        "https://api.cursor.com/admin/usage",
+        headers={"Authorization": "Bearer secret-token"},
+    )
+    new_request = handler.redirect_request(
+        req, None, 302, "Found", {}, "https://api.cursor.com/admin/usage/v2"
+    )
+    assert new_request.get_header("Authorization") == "Bearer secret-token"

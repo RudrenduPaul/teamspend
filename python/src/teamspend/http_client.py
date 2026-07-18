@@ -22,12 +22,45 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Sequence
+from urllib.parse import urlsplit
 
 from .errors import AuthenticationError, RetryExhaustedError, SchemaDriftError
 
 MAX_RETRIES = 3
 BASE_DELAY_SECONDS = 0.5
 REQUEST_TIMEOUT_SECONDS = 30.0
+
+_SENSITIVE_HEADERS = ("Authorization", "x-api-key")
+
+
+class _SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Strips auth headers before following a redirect to a different host.
+
+    urllib's default HTTPRedirectHandler forwards every original request
+    header -- including Authorization/x-api-key -- to wherever a 3xx
+    Location points, even a different host. `requests` strips auth headers
+    on cross-origin redirects by default; bare urllib does not. Every
+    teamspend admin-API call carries a live vendor token, so a compromised
+    or misconfigured upstream (or a MITM in front of it) could otherwise
+    use a redirect to exfiltrate the token to an attacker-controlled host.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new_request = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new_request is None:
+            return None
+        if urlsplit(req.full_url).netloc != urlsplit(newurl).netloc:
+            for header in _SENSITIVE_HEADERS:
+                # Request.remove_header() does a raw dict .pop() with no case
+                # normalization, while add_header() stores keys via
+                # .capitalize() ("x-api-key" -> "X-api-key"). Passing the raw
+                # header name here silently no-ops for anything whose casing
+                # doesn't already match its capitalize()'d form.
+                new_request.remove_header(header.capitalize())
+        return new_request
+
+
+_opener = urllib.request.build_opener(_SameOriginRedirectHandler)
 
 
 @dataclass
@@ -55,7 +88,7 @@ def default_transport(url: str, headers: Dict[str, str], timeout: float) -> Http
     """Real network transport. GET only -- every teamspend admin-API call is a GET."""
     request = urllib.request.Request(url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 -- fixed https:// admin-API URLs built from constants, never from unsanitized input
+        with _opener.open(request, timeout=timeout) as response:  # noqa: S310 -- fixed https:// admin-API URLs built from constants, never from unsanitized input
             return HttpResponse(status=response.status, body=response.read())
     except urllib.error.HTTPError as error:
         # HTTPError already carries the response body/status for non-2xx --

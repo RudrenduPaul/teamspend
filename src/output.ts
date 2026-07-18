@@ -1,4 +1,5 @@
 import { writeFile, readFile, appendFile, access } from "node:fs/promises";
+import { stripControlChars } from "./adapters/csv-import.js";
 import type { ComparisonReport } from "./compare.js";
 
 const GITIGNORE_ENTRY = "teamspend-snapshot-*.json";
@@ -78,8 +79,13 @@ export function renderTerminalSummary(report: ComparisonReport): string {
     lines.push("");
     lines.push("TOP SPENDERS (across both periods)");
     report.topSpendersAcrossBoth.forEach((s, i) => {
+      // CSV-sourced emails are already stripped in csv-import.ts; API-sourced
+      // emails weren't, leaving an inconsistent path to this same unsanitized
+      // terminal print -- strip here too so a compromised vendor response
+      // can't inject terminal escape sequences via userEmail either.
+      const safeEmail = s.userEmail ? stripControlChars(s.userEmail) : "(unknown)";
       lines.push(
-        `  ${i + 1}. ${s.userEmail ?? "(unknown)"}     ${s.period}      ${formatUsd(s.costUsd)}`,
+        `  ${i + 1}. ${safeEmail}     ${s.period}      ${formatUsd(s.costUsd)}`,
       );
     });
   }

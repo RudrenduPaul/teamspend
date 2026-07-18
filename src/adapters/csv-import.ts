@@ -25,7 +25,7 @@ interface CSVRow {
  * human-readable render path, but stripping at parse time protects every
  * consumer, not just that one.
  */
-function stripControlChars(value: string): string {
+export function stripControlChars(value: string): string {
   return value.replace(/[\x00-\x1f]/g, "");
 }
 
