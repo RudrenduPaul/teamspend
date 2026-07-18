@@ -7,6 +7,7 @@ import { fetchClaudeCodeSpend } from "./adapters/claude-code.js";
 import { fetchCopilotSpend } from "./adapters/copilot.js";
 import { fetchOpenCodeSpend } from "./adapters/opencode.js";
 import { fetchClaudeCodePersonalUsage } from "./adapters/claude-code-personal.js";
+import { fetchCodexUsage } from "./adapters/codex.js";
 import { importFromCSV } from "./adapters/csv-import.js";
 import { buildComparison, type PeriodOutcome } from "./compare.js";
 import {
@@ -23,6 +24,7 @@ const KNOWN_TOOLS: ToolId[] = [
   "copilot",
   "opencode",
   "claude-code-personal",
+  "codex",
 ];
 const DATE_RANGE_RE = /^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/;
 
@@ -121,6 +123,12 @@ async function fetchTool(
       // own local JSONL session logs and never calls an admin API, so
       // TEAMSPEND_CLAUDE_CODE_PERSONAL_TOKEN is never required.
       return await fetchClaudeCodePersonalUsage(window);
+    }
+    if (tool === "codex") {
+      // No API key: Codex CLI has no admin/team API, only local
+      // per-machine rollout logs (see src/adapters/codex.ts for how those
+      // are resolved and read).
+      return await fetchCodexUsage(window);
     }
     throw new InvalidCliArgError(`No adapter for tool "${tool}"`);
   } catch (error) {

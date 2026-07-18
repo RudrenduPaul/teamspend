@@ -13,13 +13,22 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Literal, Optional
 
-ToolId = Literal["cursor", "claude-code", "copilot", "opencode", "claude-code-personal"]
+ToolId = Literal[
+    "cursor",
+    "claude-code",
+    "copilot",
+    "opencode",
+    "claude-code-personal",
+    "codex",
+]
 """
 Tools teamspend can pull spend data from. `claude-code-personal` is not a
 separate vendor -- it's a credential-free local-file read mode for Claude
 Code's own JSONL session logs, for someone who wants their personal usage
 without org-admin API access (see
-teamspend.adapters.claude_code_personal).
+teamspend.adapters.claude_code_personal). `codex` (OpenAI's Codex CLI) is
+the same shape as `opencode` -- no admin/team API, only local per-machine
+session logs (see teamspend.adapters.codex).
 """
 
 
