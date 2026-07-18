@@ -18,6 +18,7 @@ https://github.com/RudrenduPaul/teamspend for the canonical documentation
 and the original TypeScript source.
 """
 from .adapters.claude_code import fetch_claude_code_spend
+from .adapters.copilot import fetch_copilot_spend
 from .adapters.csv_import import import_from_csv
 from .adapters.cursor import fetch_cursor_spend
 from .compare import ComparisonReport, PeriodOutcome, TopSpenderEntry, build_comparison
@@ -66,6 +67,7 @@ __all__ = [
     # adapters
     "fetch_cursor_spend",
     "fetch_claude_code_spend",
+    "fetch_copilot_spend",
     "import_from_csv",
     # compare
     "PeriodOutcome",

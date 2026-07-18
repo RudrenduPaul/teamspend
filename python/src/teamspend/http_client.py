@@ -114,12 +114,22 @@ def fetch_with_retry(
     *,
     transport: Optional[Transport] = None,
     sleep: Callable[[float], None] = time.sleep,
+    response_type: str = "json",
+    empty_on: Sequence[int] = (),
 ) -> Any:
     """
     Fetches `url` with `auth_header`, retrying 429/5xx/timeout up to
     MAX_RETRIES times with exponential backoff. Returns the parsed JSON
-    body on success. Raises AuthenticationError immediately on 401/403
-    (never retried), RetryExhaustedError once the retry budget is spent.
+    body on success (or the raw text body if `response_type="text"` --
+    used by the Copilot adapter for its NDJSON report downloads, which
+    aren't valid single-document JSON). Raises AuthenticationError
+    immediately on 401/403 (never retried), RetryExhaustedError once the
+    retry budget is spent.
+
+    `empty_on` is a set of status codes that resolve to `None` instead of
+    raising -- used by the Copilot adapter to treat a 404 on a single day's
+    report (no activity that day) as "zero data," not a failure. Never
+    passed by Cursor/Claude Code, which have no such concept.
 
     `transport` defaults to None and resolves to `default_transport` inside
     the function body (rather than as the parameter's default value) on
@@ -147,6 +157,9 @@ def fetch_with_retry(
                 tool, f"TEAMSPEND_{tool.upper().replace('-', '_')}_TOKEN"
             )
 
+        if response.status in empty_on:
+            return None
+
         retry_kind = _is_retryable(response.status)
         if retry_kind:
             last_failure_kind = retry_kind
@@ -158,6 +171,8 @@ def fetch_with_retry(
         if not (200 <= response.status < 300):
             raise RuntimeError(f"{tool} returned unexpected status {response.status}")
 
+        if response_type == "text":
+            return response.body.decode("utf-8")
         return response.json()
 
     # Unreachable, but keeps type checkers satisfied about a return path.

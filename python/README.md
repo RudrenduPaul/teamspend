@@ -80,6 +80,27 @@ one side failed (auth, a vendor API window limit, or a CLI argument
 error) -- see `DATA UNAVAILABLE` in the terminal output and the `error`
 field of the JSON report for the reason.
 
+## GitHub Copilot support
+
+```bash
+export TEAMSPEND_COPILOT_TOKEN=<a token with read:org on the org>
+export TEAMSPEND_COPILOT_ORG=<your GitHub org login>
+export TEAMSPEND_COPILOT_SEAT_PRICE_USD=19   # optional
+
+teamspend --tools cursor,copilot --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```
+
+GitHub's real Copilot usage metrics API has no cost/spend field at all --
+only usage counts, most usefully `ai_credits_used`. teamspend converts that
+to USD at GitHub's own published, fixed rate of 1 AI credit = $0.01 USD,
+and adds `TEAMSPEND_COPILOT_SEAT_PRICE_USD` (if set) once per user for the
+whole window to also reflect the flat per-seat license price GitHub's API
+never exposes. Every Copilot result is therefore always `is_estimated`,
+regardless of whether a seat price was supplied -- see the project
+[README's "GitHub Copilot support" section](https://github.com/RudrenduPaul/teamspend#github-copilot-support)
+and [docs/concepts.md](https://github.com/RudrenduPaul/teamspend/blob/main/docs/concepts.md#copilots-usage-based-report-pagination-and-cost-derivation)
+for the full mechanics.
+
 ## Using the library instead of the CLI
 
 Both packages export a programmatic API for scripts and CI gates that want
@@ -211,9 +232,10 @@ day. Rows are aggregated per `user_email`.
 ## Security
 
 teamspend needs org-admin-level credentials for the tools it queries --
-`TEAMSPEND_CURSOR_TOKEN` (Cursor Admin API) and/or
-`TEAMSPEND_CLAUDE_CODE_TOKEN` (Anthropic's Claude Enterprise Analytics
-API) -- read only from environment variables via `os.environ.get()` in
+`TEAMSPEND_CURSOR_TOKEN` (Cursor Admin API), `TEAMSPEND_CLAUDE_CODE_TOKEN`
+(Anthropic's Claude Enterprise Analytics API), and/or
+`TEAMSPEND_COPILOT_TOKEN` + `TEAMSPEND_COPILOT_ORG` (GitHub Copilot usage
+metrics API) -- read only from environment variables via `os.environ.get()` in
 `cli.py`'s `_fetch_tool()`. Neither is ever hardcoded, persisted to disk,
 or included in the JSON report or terminal output. A 401/403 from either
 vendor's API raises `AuthenticationError` naming which environment

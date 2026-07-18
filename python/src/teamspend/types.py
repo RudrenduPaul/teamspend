@@ -13,8 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Literal, Optional
 
-ToolId = Literal["cursor", "claude-code"]
-"""Tools teamspend can pull spend data from in v0.1."""
+ToolId = Literal["cursor", "claude-code", "copilot"]
+"""Tools teamspend can pull spend data from."""
 
 
 @dataclass

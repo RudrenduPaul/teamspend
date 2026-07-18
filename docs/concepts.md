@@ -52,6 +52,65 @@ This detection came from watching two other tools ([ccusage
 hit the identical root cause independently -- see the project README's
 "Success stories" section for the full story.
 
+Copilot has no equivalent conditional rule -- see "Copilot's usage-based
+report pagination and cost derivation" below for why every Copilot result
+is unconditionally `is_estimated`.
+
+## Copilot's usage-based report pagination and cost derivation
+
+GitHub Copilot's real, current (non-deprecated) usage metrics API --
+`GET /orgs/{org}/copilot/metrics/reports/users-1-day` -- is structurally
+different from Cursor's and Claude Code's admin APIs in three ways that
+`fetch_copilot_spend` / `fetchCopilotSpend` has to work around:
+
+1. **No arbitrary date range.** The API only exposes single-day
+   (`users-1-day?day=YYYY-MM-DD`) or latest-rolling-28-day
+   (`users-28-day/latest`) granularity, no `start`/`end` query params. To
+   honor a caller-supplied window, the adapter requests one report per
+   calendar day in the window and sums per-user totals across days -- the
+   same "chunk the window, sum the chunks" shape as `fetchCursorSpend`'s
+   30-day pagination, just chunked by day instead of by 30-day page. A 404
+   on a given day (no Copilot activity, or the org's metrics collection
+   hadn't started that day) is treated as zero users for that day, not a
+   failure.
+2. **Report-then-download, not one inline response.** Each report call
+   returns `{download_links, report_day}`, not per-user data inline.
+   `download_links` are short-lived, pre-signed GitHub-owned URLs pointing
+   to NDJSON (newline-delimited JSON) files -- one JSON user record per
+   line. The adapter fetches and parses each one, without forwarding the
+   org's `TEAMSPEND_COPILOT_TOKEN` (the pre-signed URL carries its own
+   auth and can reject an extra Authorization header).
+3. **No native cost field at all.** Unlike Cursor's `cost_usd` and Claude
+   Code's `spend_usd`, GitHub's Copilot metrics response has no dollar
+   figure anywhere -- only usage counts (`ai_credits_used`,
+   `user_initiated_interaction_count`, lines-of-code sums, feature-usage
+   flags). Copilot Business/Enterprise is flat-seat billing ($19 or
+   $39/seat/month, bundling a matching monthly AI-credit allowance) --
+   GitHub does not expose an org's actual contracted seat price through
+   any API, the same structural gap Cursor's and Claude Code's flat-seat
+   plans have. The one real, vendor-reported, per-user number is
+   `ai_credits_used`, which the adapter converts to USD at GitHub's own
+   published, fixed rate of **1 AI credit = $0.01 USD** (not a negotiated
+   or per-org price). An optional `seat_price_usd` argument
+   (`TEAMSPEND_COPILOT_SEAT_PRICE_USD` from the CLI) adds a flat per-seat
+   price once per user for the whole window, never once per day, to also
+   reflect the license cost the credits-only figure excludes.
+
+Because there is no vendor-reported cost field to trust or distrust in the
+first place, `is_estimated` is unconditionally `true` for every Copilot
+result, regardless of whether `seat_price_usd` was supplied -- every dollar
+figure Copilot's adapter produces is derived, never vendor-reported.
+
+Copilot users are identified by `user_login` (a GitHub username); the
+Copilot metrics API has no email field, so `user_email` is always `null`
+for Copilot users. Copilot's per-user report also has no token counts
+(input/output/cache) -- `requests` maps to
+`user_initiated_interaction_count` instead.
+
+Copilot usage metrics reports have no data before `2025-10-10`. A requested
+window starting before that date raises `DataUnavailableError`, the same
+`--*-csv` fallback mechanics as Claude Code's window limit below.
+
 ## Retry and timeout behavior
 
 Every admin-API call goes through a shared fetch+retry wrapper

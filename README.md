@@ -29,6 +29,7 @@ More teams are running more than one AI coding tool at once, or moving between t
 - [Get started in under a minute](#get-started-in-under-a-minute)
 - [Built to be trusted, not just used](#built-to-be-trusted-not-just-used)
 - [CSV import, for the history a live API can't reach](#csv-import-for-the-history-a-live-api-cant-reach)
+- [GitHub Copilot support](#github-copilot-support)
 - [Roadmap](#roadmap)
 - [Good to know before you run it](#good-to-know-before-you-run-it)
 - [What is teamspend, and why does it exist](#what-is-teamspend-and-why-does-it-exist)
@@ -93,6 +94,11 @@ Both need org-admin-level access on their platform. If you can already see billi
 
     teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
+Comparing against GitHub Copilot instead? See
+["GitHub Copilot support"](#github-copilot-support) below -- it needs two
+more environment variables than Cursor/Claude Code do, for reasons that are
+worth reading before you point it at a real org.
+
 Both CLIs accept identical flags and print the same output shape. See
 [python/README.md](./python/README.md) for the Python package's library API
 and [docs/getting-started.md](./docs/getting-started.md) for the full guide
@@ -107,7 +113,7 @@ A tool that touches your team's spend and email data should earn that trust in t
 | Runtime dependencies | Zero |
 | Package size | 27.3 kB packed, 88.3 kB unpacked |
 | Cold install to first response | Under 1 second, measured with a cleared npm/npx cache |
-| Tests | 47 passing, 98.2% line coverage |
+| Tests | 58 passing, 98.2% line coverage |
 | Known vulnerabilities | Zero, per `npm audit` |
 | File permissions | Report files are owner-only (`0600`) and auto-gitignored, since they hold per-user emails and spend |
 
@@ -118,11 +124,55 @@ A tool that touches your team's spend and email data should earn that trust in t
 
     npx teamspend --tools cursor,claude-code --before 2025-11-01:2025-11-30 --after 2026-06-01:2026-06-30 --before-csv ./before.csv
 
+## GitHub Copilot support
+
+    export TEAMSPEND_COPILOT_TOKEN=<a token with read:org on the org>
+    export TEAMSPEND_COPILOT_ORG=<your GitHub org login>
+    export TEAMSPEND_COPILOT_SEAT_PRICE_USD=19   # optional, see below
+
+    npx teamspend --tools cursor,copilot --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+
+**Credential:** `TEAMSPEND_COPILOT_TOKEN` needs the `read:org` scope (a
+classic PAT) or the fine-grained "View Organization Copilot Metrics"
+permission, and the org must be on Copilot Business or Enterprise.
+`TEAMSPEND_COPILOT_ORG` is required too -- unlike Cursor's and Claude
+Code's admin APIs, GitHub's Copilot metrics endpoint is scoped to a specific
+org login in the URL path itself, not just the token.
+
+**How teamspend derives a dollar figure, honestly:** GitHub's real, current
+Copilot usage metrics API (`GET /orgs/{org}/copilot/metrics/reports/
+users-1-day`, confirmed against GitHub's own docs while building this --
+the older `/orgs/{org}/copilot/metrics` endpoint some other tools still
+reference was sunset by GitHub on 2026-04-02 and no longer works) has **no
+cost or spend field anywhere**. Copilot Business/Enterprise is flat-seat
+billing ($19 or $39 per seat per month, bundling a matching monthly AI-credit
+allowance), and GitHub does not expose an org's actual contracted seat price
+through any API -- the same structural gap Cursor's and Claude Code's
+flat-seat billing tiers already have in this tool.
+
+What the API *does* return per user is `ai_credits_used`. teamspend converts
+that to USD at GitHub's own published, fixed rate of **1 AI credit = $0.01
+USD** -- not invented, and not a negotiated per-org price. If you set
+`TEAMSPEND_COPILOT_SEAT_PRICE_USD`, that flat price is added once per active
+user for the whole comparison window (never once per day) to also reflect
+the license cost the credits-only figure excludes; if you don't set it, the
+reported number is credits-usage cost only and explicitly does not include
+the seat fee.
+
+Because there is no vendor-reported cost field to begin with, every Copilot
+result -- with or without a seat price -- is marked `isEstimated: true`.
+This is a stronger caveat than Cursor's and Claude Code's suspicious-zero
+flag, which only fires on a specific zero-cost pattern: Copilot has no
+native dollar figure to trust in the first place, so teamspend never claims
+one. See [docs/concepts.md](./docs/concepts.md#copilots-usage-based-report-pagination-and-cost-derivation)
+for the full mechanics, including why one comparison window means one API
+call per calendar day rather than one call for the whole range.
+
 ## Roadmap
 
 This started narrow on purpose: prove the idea on the two tools one real team was actually migrating between, get it right, then grow it. Next up, roughly in order of how often people ask:
 
-- [ ] GitHub Copilot adapter
+- [x] GitHub Copilot adapter
 - [ ] OpenCode adapter
 - [ ] Non-USD billing support
 
@@ -173,7 +223,7 @@ The whole comparison is marked incomplete rather than silently reported as compl
 No. It's a local CLI: it calls each vendor's API directly from your machine, prints a summary to your terminal, and writes one JSON report file (`0600` permissions) to your current directory. Nothing is sent to teamspend or any third party.
 
 **Can I use teamspend for tools other than Cursor and Claude Code?**
-Not yet in the published package. GitHub Copilot and OpenCode adapters are next on the roadmap; a CSV-import fallback already lets you supply spend data for any tool in the meantime, using the same `date,user_email,cost_usd,is_estimated` schema documented above.
+GitHub Copilot is also supported now -- see ["GitHub Copilot support"](#github-copilot-support) above, including an honest note on how its cost figure is derived since GitHub's own API has no dollar field to report. An OpenCode adapter is next on the roadmap; a CSV-import fallback already lets you supply spend data for any other tool in the meantime, using the same `date,user_email,cost_usd,is_estimated` schema documented above.
 
 **Why does a $0 spend number sometimes show up as "estimated" instead of exact?**
 Some billing tiers (flat-seat Cursor plans, Claude.ai Team/Enterprise seats) don't expose true per-user cost through the vendor's own Admin API and report an exact-looking `$0` even for users with real activity. teamspend detects a `$0` cost paired with non-zero token or request counts and flags it as estimated rather than presenting a misleading exact zero. See "Success stories" below for the two independent bug reports in other tools that led to this fix.

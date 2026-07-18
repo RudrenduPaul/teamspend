@@ -19,6 +19,7 @@ import sys
 from typing import List, Optional, Tuple
 
 from .adapters.claude_code import fetch_claude_code_spend
+from .adapters.copilot import fetch_copilot_spend
 from .adapters.csv_import import import_from_csv
 from .adapters.cursor import fetch_cursor_spend
 from .compare import ComparisonReport, PeriodOutcome, build_comparison
@@ -26,7 +27,7 @@ from .errors import DataUnavailableError, InvalidCliArgError
 from .output import render_terminal_summary, scaffold_gitignore, write_json_report
 from .types import AdapterResult, DateWindow, ToolId
 
-KNOWN_TOOLS: List[ToolId] = ["cursor", "claude-code"]
+KNOWN_TOOLS: List[ToolId] = ["cursor", "claude-code", "copilot"]
 DATE_RANGE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$")
 _VERSION = "0.1.0"
 
@@ -61,6 +62,27 @@ def _validate_window_order(before: DateWindow, after: DateWindow) -> None:
         )
 
 
+def _parse_copilot_seat_price() -> Optional[float]:
+    """
+    Parses TEAMSPEND_COPILOT_SEAT_PRICE_USD, an optional per-seat monthly
+    price the caller supplies since GitHub's API never exposes an org's
+    actual negotiated seat price. Returns None if unset. Raises
+    InvalidCliArgError for a set-but-unparseable or negative value.
+    """
+    raw = os.environ.get("TEAMSPEND_COPILOT_SEAT_PRICE_USD")
+    if not raw:
+        return None
+    try:
+        parsed = float(raw)
+    except ValueError:
+        parsed = float("nan")
+    if not (parsed >= 0):
+        raise InvalidCliArgError(
+            f'TEAMSPEND_COPILOT_SEAT_PRICE_USD must be a non-negative number, got "{raw}"'
+        )
+    return parsed
+
+
 def _fetch_tool(
     tool: ToolId, window: DateWindow, csv_path: Optional[str]
 ) -> Optional[AdapterResult]:
@@ -76,6 +98,15 @@ def _fetch_tool(
             if not api_key:
                 raise RuntimeError(f"Missing {env_var}")
             return fetch_claude_code_spend(window, api_key)
+        if tool == "copilot":
+            if not api_key:
+                raise RuntimeError(f"Missing {env_var}")
+            org = os.environ.get("TEAMSPEND_COPILOT_ORG")
+            if not org:
+                raise RuntimeError("Missing TEAMSPEND_COPILOT_ORG")
+            return fetch_copilot_spend(
+                window, api_key, org, _parse_copilot_seat_price()
+            )
         raise InvalidCliArgError(f'No adapter for tool "{tool}"')
     except DataUnavailableError:
         if csv_path:

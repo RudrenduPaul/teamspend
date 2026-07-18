@@ -1,0 +1,30 @@
+{
+  "users": [
+    {
+      "user_id": 10245001,
+      "user_login": "r-chen",
+      "ai_credits_used": 842.5,
+      "user_initiated_interaction_count": 128,
+      "code_generation_activity_count": 96,
+      "code_acceptance_activity_count": 71,
+      "loc_suggested_to_add_sum": 4102,
+      "loc_added_sum": 2870,
+      "used_agent": true,
+      "used_chat": true,
+      "ai_adoption_phase": "engaged"
+    },
+    {
+      "user_id": 10245002,
+      "user_login": "j-kim",
+      "ai_credits_used": 315.0,
+      "user_initiated_interaction_count": 54,
+      "code_generation_activity_count": 40,
+      "code_acceptance_activity_count": 22,
+      "loc_suggested_to_add_sum": 1290,
+      "loc_added_sum": 810,
+      "used_agent": false,
+      "used_chat": true,
+      "ai_adoption_phase": "adopting"
+    }
+  ]
+}

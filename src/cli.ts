@@ -4,6 +4,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { fetchCursorSpend } from "./adapters/cursor.js";
 import { fetchClaudeCodeSpend } from "./adapters/claude-code.js";
+import { fetchCopilotSpend } from "./adapters/copilot.js";
 import { importFromCSV } from "./adapters/csv-import.js";
 import { buildComparison, type PeriodOutcome } from "./compare.js";
 import {
@@ -14,7 +15,7 @@ import {
 import { InvalidCliArgError, DataUnavailableError } from "./errors.js";
 import type { DateWindow, ToolId } from "./schema.js";
 
-const KNOWN_TOOLS: ToolId[] = ["cursor", "claude-code"];
+const KNOWN_TOOLS: ToolId[] = ["cursor", "claude-code", "copilot"];
 const DATE_RANGE_RE = /^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/;
 
 function parseDateRange(flag: string, value: string): DateWindow {
@@ -52,6 +53,27 @@ function validateWindowOrder(before: DateWindow, after: DateWindow): void {
   }
 }
 
+/**
+ * Parses TEAMSPEND_COPILOT_SEAT_PRICE_USD, an optional per-seat monthly
+ * price the caller supplies since GitHub's API never exposes an org's
+ * actual negotiated/contracted seat price. Returns undefined if unset (the
+ * adapter then reports credits-usage-only cost). Throws InvalidCliArgError
+ * for a set-but-unparseable or negative value, rather than silently
+ * treating a typo as "no seat price."
+ */
+function parseCopilotSeatPrice(): number | undefined {
+  const raw = process.env.TEAMSPEND_COPILOT_SEAT_PRICE_USD;
+  if (raw === undefined || raw === "") return undefined;
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new InvalidCliArgError(
+      `TEAMSPEND_COPILOT_SEAT_PRICE_USD must be a non-negative number, got "${raw}"`,
+    );
+  }
+  return parsed;
+}
+
 async function fetchTool(
   tool: ToolId,
   window: DateWindow,
@@ -68,6 +90,17 @@ async function fetchTool(
     if (tool === "claude-code") {
       if (!apiKey) throw new Error(`Missing ${envVar}`);
       return await fetchClaudeCodeSpend(window, apiKey);
+    }
+    if (tool === "copilot") {
+      if (!apiKey) throw new Error(`Missing ${envVar}`);
+      const org = process.env.TEAMSPEND_COPILOT_ORG;
+      if (!org) throw new Error("Missing TEAMSPEND_COPILOT_ORG");
+      return await fetchCopilotSpend(
+        window,
+        apiKey,
+        org,
+        parseCopilotSeatPrice(),
+      );
     }
     throw new InvalidCliArgError(`No adapter for tool "${tool}"`);
   } catch (error) {

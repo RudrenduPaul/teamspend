@@ -22,6 +22,23 @@ export interface FetchWithRetryOptions {
   tool: string;
   url: string;
   authHeader: Record<string, string>;
+  /**
+   * "json" (default) parses the body with response.json(); "text" returns
+   * the raw body string unparsed. Copilot's adapter uses "text" for its
+   * second-stage NDJSON report downloads, which aren't valid single-document
+   * JSON (one JSON object per line) so response.json() would throw.
+   */
+  responseType?: "json" | "text";
+  /**
+   * Status codes that should resolve to `null` instead of throwing. Used by
+   * Copilot's adapter to treat a 404 on a single day's report (no Copilot
+   * activity that day, or the org didn't exist yet) as "zero data for this
+   * day" rather than a hard failure -- mirrors how Cursor's adapter treats a
+   * `{ users: [] }` 200 response as an explicit, non-error empty result.
+   * Never set by Cursor/Claude Code, whose adapters have no such concept of
+   * an expected-empty day.
+   */
+  emptyOn?: number[];
 }
 
 /**
@@ -33,7 +50,8 @@ export interface FetchWithRetryOptions {
 export async function fetchWithRetry(
   options: FetchWithRetryOptions,
 ): Promise<unknown> {
-  const { tool, url, authHeader } = options;
+  const { tool, url, authHeader, responseType = "json", emptyOn = [] } =
+    options;
   let lastFailureKind: "rate-limit" | "server-error" | "timeout" = "timeout";
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -56,6 +74,10 @@ export async function fetchWithRetry(
         );
       }
 
+      if (emptyOn.includes(response.status)) {
+        return null;
+      }
+
       const retryKind = isRetryable(response.status);
       if (retryKind) {
         lastFailureKind = retryKind;
@@ -72,7 +94,9 @@ export async function fetchWithRetry(
         );
       }
 
-      return await response.json();
+      return responseType === "text"
+        ? await response.text()
+        : await response.json();
     } catch (error) {
       if (
         error instanceof AuthenticationError ||

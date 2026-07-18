@@ -38,7 +38,8 @@
     "cost",
     "finops",
     "cursor",
-    "claude-code"
+    "claude-code",
+    "github-copilot"
   ],
   "license": "Apache-2.0",
   "devDependencies": {

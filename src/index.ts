@@ -3,6 +3,7 @@ export * from "./errors.js";
 export * from "./http-client.js";
 export * from "./adapters/cursor.js";
 export * from "./adapters/claude-code.js";
+export * from "./adapters/copilot.js";
 export * from "./adapters/csv-import.js";
 export * from "./compare.js";
 export * from "./output.js";
