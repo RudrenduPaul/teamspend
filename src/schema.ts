@@ -1,5 +1,15 @@
-/** Tools teamspend can pull spend data from. */
-export type ToolId = "cursor" | "claude-code" | "copilot" | "opencode";
+/**
+ * Tools teamspend can pull spend data from. `claude-code-personal` is not a
+ * separate vendor -- it's a credential-free local-file read mode for Claude
+ * Code's own JSONL session logs, for someone who wants their personal usage
+ * without org-admin API access (see src/adapters/claude-code-personal.ts).
+ */
+export type ToolId =
+  | "cursor"
+  | "claude-code"
+  | "copilot"
+  | "opencode"
+  | "claude-code-personal";
 
 export interface DateWindow {
   start: string; // YYYY-MM-DD

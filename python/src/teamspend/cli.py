@@ -19,6 +19,7 @@ import sys
 from typing import List, Optional, Tuple
 
 from .adapters.claude_code import fetch_claude_code_spend
+from .adapters.claude_code_personal import fetch_claude_code_personal_usage
 from .adapters.copilot import fetch_copilot_spend
 from .adapters.csv_import import import_from_csv
 from .adapters.cursor import fetch_cursor_spend
@@ -28,7 +29,13 @@ from .errors import DataUnavailableError, InvalidCliArgError
 from .output import render_terminal_summary, scaffold_gitignore, write_json_report
 from .types import AdapterResult, DateWindow, ToolId
 
-KNOWN_TOOLS: List[ToolId] = ["cursor", "claude-code", "copilot", "opencode"]
+KNOWN_TOOLS: List[ToolId] = [
+    "cursor",
+    "claude-code",
+    "copilot",
+    "opencode",
+    "claude-code-personal",
+]
 DATE_RANGE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$")
 _VERSION = "0.1.0"
 
@@ -113,6 +120,12 @@ def _fetch_tool(
             # per-machine session logs (see adapters/opencode.py for how
             # those are resolved and read).
             return fetch_opencode_spend(window)
+        if tool == "claude-code-personal":
+            # Deliberately no credential check -- this mode reads Claude
+            # Code's own local JSONL session logs and never calls an admin
+            # API, so TEAMSPEND_CLAUDE_CODE_PERSONAL_TOKEN is never
+            # required.
+            return fetch_claude_code_personal_usage(window)
         raise InvalidCliArgError(f'No adapter for tool "{tool}"')
     except DataUnavailableError:
         if csv_path:

@@ -197,6 +197,52 @@ instead of calling anything over the network:
   window is different and legitimate: it returns a normal `AdapterResult`
   with an empty `users` list and `is_estimated: false`, not an error.
 
+## Personal usage mode (`claude-code-personal`)
+
+Unlike every other tool id, `claude-code-personal` doesn't call an admin
+API at all -- `fetchClaudeCodePersonalUsage` / `fetch_claude_code_personal_usage`
+reads Claude Code's own local JSONL session logs directly off disk, so it
+needs no credential and never checks a `TEAMSPEND_*_TOKEN` env var. It's
+for the person who wants their own personal usage, not a team admin
+comparing org-wide spend.
+
+**Directory resolution** (same order Claude Code itself uses):
+
+1. `CLAUDE_CONFIG_DIR` -- a comma-separated list; every entry is scanned,
+   not just the first. Each entry may already point at a `projects/`
+   directory or be the parent config dir that contains one.
+2. Else, `$XDG_CONFIG_HOME/claude/projects` (defaulting `XDG_CONFIG_HOME`
+   itself to `~/.config` per the XDG spec) IF that directory exists.
+3. Else, the legacy default: `~/.claude/projects`.
+
+Every `*.jsonl` file under the resolved directory(ies) is read recursively,
+including nested `subagents/` subdirectories. No matching files anywhere
+raises `DataUnavailableError` naming the exact directory(ies) checked,
+never a silent zero.
+
+**Parsing and window filtering.** Each JSONL line is one usage event;
+entries are matched against the requested window by comparing the
+`YYYY-MM-DD` prefix of `timestamp`. A malformed/corrupted line (Claude
+Code's own logs can end mid-write if a session crashes) is skipped rather
+than failing the whole read.
+
+**Dedup.** Retried requests can appear more than once in the logs. Entries
+are deduped by the `(message.id, requestId)` pair before summing; an entry
+missing both is treated as unique (can't be meaningfully deduped without
+either identifier).
+
+**Cost.** `costUSD` is trusted when present on a line. When it's absent,
+that line's token counts still count toward the totals, but not a dollar
+figure, and the whole result is flagged `isEstimated` -- the same "never
+present a guess as an exact number" rule the suspicious-zero detection
+above follows.
+
+**Identity.** There's no vendor-supplied `user_id`/`email` in a local log
+file, so the single `UserUsage` entry uses the OS login name
+(`os.userInfo().username` / `getpass.getuser()`) as `userId`, or the fixed
+placeholder `"local-user"` if the OS can't answer (e.g. inside a minimal
+container with no passwd entry). `userEmail` is always `null` in this mode.
+
 ## CSV import schema
 
 ```

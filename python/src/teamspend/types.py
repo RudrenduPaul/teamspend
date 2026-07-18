@@ -13,8 +13,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Literal, Optional
 
-ToolId = Literal["cursor", "claude-code", "copilot", "opencode"]
-"""Tools teamspend can pull spend data from."""
+ToolId = Literal["cursor", "claude-code", "copilot", "opencode", "claude-code-personal"]
+"""
+Tools teamspend can pull spend data from. `claude-code-personal` is not a
+separate vendor -- it's a credential-free local-file read mode for Claude
+Code's own JSONL session logs, for someone who wants their personal usage
+without org-admin API access (see
+teamspend.adapters.claude_code_personal).
+"""
 
 
 @dataclass

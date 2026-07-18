@@ -31,6 +31,7 @@ More teams are running more than one AI coding tool at once, or moving between t
 - [CSV import, for the history a live API can't reach](#csv-import-for-the-history-a-live-api-cant-reach)
 - [GitHub Copilot support](#github-copilot-support)
 - [OpenCode: local-only, no API key needed](#opencode-local-only-no-api-key-needed)
+- [Personal usage mode, for when you don't have admin access](#personal-usage-mode-for-when-you-dont-have-admin-access)
 - [Roadmap](#roadmap)
 - [Good to know before you run it](#good-to-know-before-you-run-it)
 - [What is teamspend, and why does it exist](#what-is-teamspend-and-why-does-it-exist)
@@ -199,6 +200,16 @@ Two honest caveats worth knowing before you trust this number:
   usage-based)`, even on the rare message where that field is genuinely
   populated. Token counts (input/output/cache read/write) are exact --
   it's only the dollar figure that's approximate.
+
+## Personal usage mode, for when you don't have admin access
+
+Everything above needs org-admin credentials (`TEAMSPEND_CURSOR_TOKEN`, `TEAMSPEND_CLAUDE_CODE_TOKEN`) because it's pulling a whole team's numbers from a vendor's admin API. If you just want your own personal Claude Code spend and don't have (or don't want to use) org-admin access, use `claude-code-personal` instead of `claude-code` as the tool name:
+
+    npx teamspend --tools claude-code-personal,claude-code-personal --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+
+This mode reads Claude Code's own local JSONL session logs straight off disk (`~/.claude/projects/**/*.jsonl` by default, or wherever `CLAUDE_CONFIG_DIR`/`XDG_CONFIG_HOME` points). No API key, no network call, no admin access -- it needs nothing but the logs Claude Code already writes on your machine. It reports on the single local user running the command, not a team.
+
+Two honest caveats: it only sees what's on the machine you run it on, and not every logged entry carries an exact `costUSD` from Claude Code -- when one doesn't, that entry's tokens still count but its dollar amount is flagged `isEstimated`, same as every other estimated number this tool ever shows you (see "Flags suspicious zeros instead of trusting them" above). It composes with the CSV-import fallback too: pair `claude-code-personal` on one side with a `--before-csv`/`--after-csv` on the other if you're comparing your own usage against a hand-supplied number for a tool teamspend doesn't fetch directly.
 
 ## Roadmap
 
