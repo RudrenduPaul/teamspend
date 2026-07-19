@@ -13,14 +13,9 @@ Six tools now, not two: Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex
 
     npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
-<!-- TODO: record a real terminal capture (asciinema or a short GIF) of the command above
-     against a real Cursor + Claude Code org and embed it here. Capture script:
-     1. export TEAMSPEND_CURSOR_TOKEN=... TEAMSPEND_CLAUDE_CODE_TOKEN=...
-     2. Run the exact command in the hook above in a clean terminal, 80 columns wide.
-     3. Record with `asciinema rec demo.cast` or a short screen-recording GIF, 10-15s,
-        ending on the printed DELTA line.
-     4. Save as demo.gif in the repo root, then replace this comment with
-        `![teamspend snapshot output showing a before/after spend delta](demo.gif)`. -->
+![Terminal recording: installing teamspend-cli from a packed tarball, then running a claude-code-personal before/after comparison that prints total spend for each period and a DELTA line](docs/demo.gif)
+
+The recording above uses `claude-code-personal` (credential-free, reads local session logs) so the install-to-first-run flow plays end to end with no admin API keys required; the [live output shape](#see-it-in-action) is identical whichever adapter you point it at.
 
 More teams are running more than one AI coding tool at once, or moving between them, than ever before. Every one of those tools has a dashboard that's perfectly accurate about itself and structurally incapable of showing you anything else. teamspend is the missing piece: one real number, pulled straight from both tools' own APIs, showing exactly what changed.
 
@@ -266,6 +261,8 @@ A flat total answers "what did we spend," not "what's driving it." Add `--breakd
 
     npx teamspend-cli --tools claude-code-personal,claude-code-personal --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30 --breakdown session
 
+![Terminal recording: teamspend run with --breakdown session, printing a per-session cost table (session ID, dollar cost, request count) for both the before and after period, then the overall DELTA line](docs/usage.gif)
+
 This adds a per-session table (top 10 by cost) to the terminal summary, and the full session array to the JSON report -- both opt-in. Without the flag, output is byte-for-byte what it always was.
 
 **A session is a bounded unit of one interaction -- the most honest proxy teamspend can offer for "cost per task."** That's a real, defensible number: it comes straight from the log's own session identifier, nothing invented. What it is *not* is a measure of task success, quality, or ROI. No vendor -- not Anthropic, not Cursor, not GitHub -- exposes whether a given session's output was actually good, so teamspend never claims to know that, and never will. If a session cost $9 and another cost $1, that tells you where the dollars went, not which one was worth it.
@@ -324,6 +321,18 @@ This is a narrow tool built for one specific job. It is not trying to replace th
 **Cursor's, Claude Code's, and Copilot's own admin consoles** are each accurate for their own tool. Use them if you only run one. teamspend exists for the moment you're comparing two, because none of them will ever put a competitor's number in the same view as their own.
 
 ## FAQ
+
+**What is teamspend, in one sentence?**
+A single command that pulls real, vendor-reported spend numbers for two AI coding tools and prints one before/after delta, so a team mid-migration doesn't have to open two dashboards and do the subtraction by hand. It deliberately does not run continuously or host a dashboard of its own -- see ["What is teamspend, and why does it exist"](#what-is-teamspend-and-why-does-it-exist) above for the full case.
+
+**What do I need installed to run it, and on which platforms?**
+The npm package (`teamspend-cli`) needs Node.js 18.3.0 or newer, per the `engines` field in `package.json`; the PyPI package (also `teamspend-cli`) needs Python 3.9 or newer, per `requires-python` in `python/pyproject.toml`. Both list `Operating System :: OS Independent` and ship zero runtime dependencies, so there's no OS-specific setup beyond having that runtime available. The admin-API adapters (Cursor, Claude Code, Copilot) only need outbound network access to the vendor's API; the local-log adapters (OpenCode, Codex CLI, `claude-code-personal`) read files directly off the disk of the machine you run teamspend on and need no network access or credential at all.
+
+**How does teamspend compare to codeburn specifically, since they're the closest overlap?**
+codeburn already breaks cost down by model, project, and task across 31 tools, all on one machine, no admin API involved -- if that single-machine breakdown is what you need, codeburn does it better than teamspend does. teamspend answers a different question: it pulls from a vendor's *admin* API to compare what a whole *team* spent, before versus after a migration, which isn't something codeburn's local-tracking model does. Pick codeburn for a personal, cross-tool cost breakdown; pick teamspend for the team-level before/after number a budget owner has to report. The full comparison, including scale and star counts, is in ["How teamspend compares"](#how-teamspend-compares) above.
+
+**Can I use teamspend commercially, or in a company codebase?**
+Yes. Both packages are Apache License 2.0 (see [LICENSE](./LICENSE) and the `license` field in `package.json`/`python/pyproject.toml`), which permits commercial use, modification, and internal or redistributed use with attribution and without a copyleft requirement. There's no separate commercial tier or license to buy.
 
 **Does teamspend replace Cursor's or Claude Code's own admin console?**
 No. Each vendor's console is still the accurate source for that vendor's own numbers, and for anything beyond spend (seat management, usage policy, model access). teamspend exists for the one thing neither console does: putting both tools' numbers in the same comparison.
