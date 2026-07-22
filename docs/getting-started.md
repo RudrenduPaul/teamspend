@@ -89,6 +89,11 @@ argument, or a vendor API window limit (see
 The failed side always shows `DATA UNAVAILABLE: <reason>` rather than being
 silently dropped from the report.
 
+Add `--json` to print the full JSON report to stdout instead of the
+human-readable summary shown above. The JSON report file on disk
+(`teamspend-snapshot-<timestamp>.json`) is written either way -- `--json`
+only changes what prints to the terminal.
+
 ## Using the library instead of the CLI
 
 Both packages export a programmatic API for scripts and CI gates that want

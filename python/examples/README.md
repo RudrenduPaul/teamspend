@@ -8,7 +8,7 @@ not pseudocode. They replay the repo's own bundled fixtures under
 external -- no API keys, no network access -- is required to run them.
 
 Install the package first (editable install from this checkout, or `pip
-install teamspend` from PyPI both work identically):
+install teamspend-cli` from PyPI both work identically):
 
 ```bash
 cd python

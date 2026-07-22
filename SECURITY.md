@@ -10,11 +10,11 @@ one local report file -- is taken seriously and handled as a priority.
 
 | Package | Version | Supported |
 | --- | --- | --- |
-| `teamspend` (npm) | 0.1.x | Yes |
-| `teamspend` (PyPI) | 0.1.x | Yes |
+| `teamspend-cli` (npm) | 0.2.x | Yes |
+| `teamspend-cli` (PyPI) | 0.2.x | Yes |
 
 Both distributions are pre-1.0 and under active development. Security
-fixes land on the latest `0.1.x` release of each; there is no older
+fixes land on the latest `0.2.x` release of each; there is no older
 supported line to backport to yet.
 
 ## Reporting a vulnerability
