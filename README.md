@@ -110,9 +110,8 @@ more environment variables than Cursor/Claude Code do, for reasons that are
 worth reading before you point it at a real org.
 
 Both CLIs accept the same comparison flags (`--tools`, `--before`, `--after`,
-`--json`, `--before-csv`, `--after-csv`, `--breakdown`) and print the same
-output shape. One difference: the Python CLI also implements `--help` and
-`--version`; the Node CLI does not yet. See
+`--json`, `--before-csv`, `--after-csv`, `--breakdown`, `--help`/`-h`,
+`--version`/`-V`) and print the same output shape. See
 [python/README.md](./python/README.md) for the Python package's library API
 and [docs/getting-started.md](./docs/getting-started.md) for the full guide
 covering both distributions.

@@ -2,6 +2,7 @@
 import { parseArgs } from "node:util";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { fetchCursorSpend } from "./adapters/cursor.js";
 import { fetchClaudeCodeSpend } from "./adapters/claude-code.js";
 import { fetchCopilotSpend } from "./adapters/copilot.js";
@@ -27,6 +28,26 @@ const KNOWN_TOOLS: ToolId[] = [
   "codex",
 ];
 const DATE_RANGE_RE = /^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/;
+
+const require = createRequire(import.meta.url);
+const { version: PACKAGE_VERSION } = require("../package.json") as { version: string };
+
+const HELP_TEXT = `usage: teamspend --tools <a>,<b> --before YYYY-MM-DD:YYYY-MM-DD --after YYYY-MM-DD:YYYY-MM-DD [options]
+
+Compares AI-coding-tool spend between a "before" and "after" window across two tools.
+
+options:
+  --tools <a>,<b>       exactly two tools to compare, e.g. cursor,claude-code
+  --before <range>      "before" window, YYYY-MM-DD:YYYY-MM-DD
+  --after <range>       "after" window, YYYY-MM-DD:YYYY-MM-DD
+  --before-csv <path>   CSV fallback for the "before" tool if the admin API is unavailable
+  --after-csv <path>    CSV fallback for the "after" tool if the admin API is unavailable
+  --breakdown session   include a per-session cost breakdown in the report
+  --json                print structured JSON to stdout instead of the human-readable summary
+  -h, --help            show this help message and exit
+  -V, --version         show the installed version and exit
+
+Supported tools: ${KNOWN_TOOLS.join(", ")}`;
 
 function parseDateRange(flag: string, value: string): DateWindow {
   const match = DATE_RANGE_RE.exec(value);
@@ -195,6 +216,8 @@ export async function run(argv: string[]): Promise<number> {
         "before-csv": { type: "string" },
         "after-csv": { type: "string" },
         breakdown: { type: "string" },
+        help: { type: "boolean", short: "h", default: false },
+        version: { type: "boolean", short: "V", default: false },
       },
     });
   } catch (error) {
@@ -203,6 +226,15 @@ export async function run(argv: string[]): Promise<number> {
   }
 
   const { values } = parsed;
+
+  if (values.help) {
+    console.log(HELP_TEXT);
+    return 0;
+  }
+  if (values.version) {
+    console.log(PACKAGE_VERSION);
+    return 0;
+  }
 
   try {
     if (!values.tools || !values.before || !values.after) {
