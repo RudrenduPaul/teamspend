@@ -99,12 +99,20 @@ Both need org-admin-level access on their platform. If you can already see billi
 
     teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
+Add `--json` to print the full JSON report to stdout instead of the
+human-readable summary above -- useful for piping into another script or a
+CI step. The JSON report file on disk is written either way; `--json` only
+changes what prints to the terminal.
+
 Comparing against GitHub Copilot instead? See
 ["GitHub Copilot support"](#github-copilot-support) below -- it needs two
 more environment variables than Cursor/Claude Code do, for reasons that are
 worth reading before you point it at a real org.
 
-Both CLIs accept identical flags and print the same output shape. See
+Both CLIs accept the same comparison flags (`--tools`, `--before`, `--after`,
+`--json`, `--before-csv`, `--after-csv`, `--breakdown`) and print the same
+output shape. One difference: the Python CLI also implements `--help` and
+`--version`; the Node CLI does not yet. See
 [python/README.md](./python/README.md) for the Python package's library API
 and [docs/getting-started.md](./docs/getting-started.md) for the full guide
 covering both distributions.

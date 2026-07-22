@@ -53,7 +53,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install teamspend
+      - run: pip install teamspend-cli
       - name: Run teamspend
         env:
           TEAMSPEND_CURSOR_TOKEN: ${{ secrets.TEAMSPEND_CURSOR_TOKEN }}
