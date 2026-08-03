@@ -23,7 +23,7 @@
     "node": ">=18.3.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && chmod +x dist/cli.js",
     "dev": "tsx src/cli.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --check .",
