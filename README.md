@@ -123,7 +123,7 @@ A tool that touches your team's spend and email data should earn that trust in t
 | | |
 |---|---|
 | Runtime dependencies | Zero |
-| Package size | 33.3 kB packed, 107.2 kB unpacked |
+| Package size | 56.2 kB packed, 190.9 kB unpacked (npm 0.2.2) |
 | Cold install to first response | Under 1 second, measured with a cleared npm/npx cache |
 | Tests | 102 passing (npm), 116 passing (PyPI), 98.2% line coverage |
 | Known vulnerabilities | Zero, per `npm audit` |
@@ -379,10 +379,9 @@ If teamspend saved you from opening two dashboards and doing math by hand, a sta
 
 ## Success stories
 
-The suspicious-zero fix above wasn't found in a vacuum. It came from watching two other teams hit the exact same wall in their own tools and treating their bug reports as a spec.
+The suspicious-zero fix above wasn't found in a vacuum. It came from watching another team hit the exact same wall in their own tool and treating their bug report as a spec.
 
 - [liuzemei's PR](https://github.com/ccusage/ccusage/pull/1113) to ccusage fixed the same root problem: on flat-seat billing, a vendor's own API can report cost_usd: 0 for a user who is clearly active, and a tool that trusts that number at face value ends up telling a team its top spender costs nothing. teamspend had the identical gap in its Cursor and Claude Code adapters. The two fixes take different routes though, ccusage recomputes a real dollar figure from its pricing table when it hits that zero, while teamspend takes the more modest step of just flagging the number as estimated instead of presenting a wrong zero as a real one.
-- [anudeepkolla16's PR](https://github.com/sarasanalytics-com/saras-usage-dashboard/pull/19) to saras-usage-dashboard found the same failure mode independently, in a different codebase entirely. Two unrelated teams hitting the same vendor blind spot is a good sign it's a real, recurring problem worth fixing properly rather than a one-off edge case.
 
 ## License
 

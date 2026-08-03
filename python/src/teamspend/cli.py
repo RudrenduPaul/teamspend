@@ -16,6 +16,7 @@ import concurrent.futures
 import os
 import re
 import sys
+from importlib import metadata as _importlib_metadata
 from typing import List, Optional, Tuple
 
 from .adapters.claude_code import fetch_claude_code_spend
@@ -40,7 +41,25 @@ KNOWN_TOOLS: List[ToolId] = [
 ]
 KNOWN_BREAKDOWN_MODES: List[BreakdownMode] = ["session"]
 DATE_RANGE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$")
-_VERSION = "0.1.0"
+
+
+def _resolve_version() -> str:
+    """
+    Reads the installed `teamspend-cli` distribution's version at runtime
+    via importlib.metadata, rather than a hardcoded string that silently
+    goes stale on every release (a real bug found by /check-repo-sanity:
+    `--version` kept reporting "0.1.0" through five releases up to 0.2.2).
+    Falls back to "0.0.0-dev" when running from a source checkout with no
+    installed distribution metadata (e.g. `python -m teamspend.cli`
+    without `pip install -e .` first), rather than raising.
+    """
+    try:
+        return _importlib_metadata.version("teamspend-cli")
+    except _importlib_metadata.PackageNotFoundError:
+        return "0.0.0-dev"
+
+
+_VERSION = _resolve_version()
 
 
 def _parse_date_range(flag: str, value: str) -> DateWindow:

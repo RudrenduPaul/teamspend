@@ -46,11 +46,10 @@ the response is flagged. This surfaces in the terminal output as
 `(estimated)` instead of `(exact, usage-based)` next to the total spend
 line.
 
-This detection came from watching two other tools ([ccusage
-#1113](https://github.com/ccusage/ccusage/pull/1113) and
-[saras-usage-dashboard #19](https://github.com/sarasanalytics-com/saras-usage-dashboard/pull/19))
-hit the identical root cause independently -- see the project README's
-"Success stories" section for the full story.
+This detection came from watching another tool ([ccusage
+#1113](https://github.com/ccusage/ccusage/pull/1113)) hit the identical
+root cause -- see the project README's "Success stories" section for the
+full story.
 
 Copilot has no equivalent conditional rule -- see "Copilot's usage-based
 report pagination and cost derivation" below for why every Copilot result
