@@ -31,6 +31,8 @@ More teams are running more than one AI coding tool at once, or moving between t
 - [Codex CLI: local-only, no API key needed](#codex-cli-local-only-no-api-key-needed)
 - [Personal usage mode, for when you don't have admin access](#personal-usage-mode-for-when-you-dont-have-admin-access)
 - [Session-level cost breakdown](#session-level-cost-breakdown)
+- [Commands](#commands)
+- [Library API reference](#library-api-reference)
 - [Roadmap](#roadmap)
 - [Good to know before you run it](#good-to-know-before-you-run-it)
 - [What is teamspend, and why does it exist](#what-is-teamspend-and-why-does-it-exist)
@@ -67,7 +69,7 @@ That's the whole product. One command, one honest number, zero spreadsheets.
 
 - **Pulls real numbers, not scrapes or estimates.** Talks directly to Cursor's Admin API and Anthropic's Claude Enterprise Analytics API. What you see is what the vendor itself reports.
 - **Compares across tools, which no single vendor dashboard will ever do.** Cursor's dashboard shows Cursor. Claude Code's dashboard shows Claude Code. teamspend puts both numbers in the same sentence.
-- **Fills historical gaps with CSV import.** If your comparison window reaches back further than a tool's API history, hand it a CSV in the same shape and it merges in seamlessly.
+- **Fills historical gaps with CSV import.** If your comparison window reaches back further than a tool's API history, hand it a CSV in the same shape and it folds those rows into the same report, no separate merge step.
 - **Never fails silently.** If one side of the comparison can't be fetched, you get a clear "data unavailable" and a reason, never a wrong number presented as a right one.
 - **Retries the way a production client should.** Rate limits, timeouts, and transient errors get exponential backoff automatically, capped and bounded, so a flaky API call doesn't mean a flaky result.
 - **Flags suspicious zeros instead of trusting them.** Flat-seat billing tiers on both Cursor and Claude Code can report an exact-looking `$0` for a user with real token activity. teamspend detects that pattern and marks the number estimated rather than showing a misleading zero.
@@ -111,8 +113,9 @@ worth reading before you point it at a real org.
 
 Both CLIs accept the same comparison flags (`--tools`, `--before`, `--after`,
 `--json`, `--before-csv`, `--after-csv`, `--breakdown`, `--help`/`-h`,
-`--version`/`-V`) and print the same output shape. See
-[python/README.md](./python/README.md) for the Python package's library API
+`--version`/`-V`) and print the same output shape. See the
+[Commands](#commands) section below for the full flag reference,
+[python/README.md](./python/README.md) for the Python package's library API,
 and [docs/getting-started.md](./docs/getting-started.md) for the full guide
 covering both distributions.
 
@@ -123,9 +126,9 @@ A tool that touches your team's spend and email data should earn that trust in t
 | | |
 |---|---|
 | Runtime dependencies | Zero |
-| Package size | 56.2 kB packed, 190.9 kB unpacked (npm 0.2.2) |
+| Package size | 56.8 kB packed, 193.1 kB unpacked (npm 0.2.3) |
 | Cold install to first response | Under 1 second, measured with a cleared npm/npx cache |
-| Tests | 102 passing (npm), 116 passing (PyPI), 98.2% line coverage |
+| Tests | 102 passing (npm), 116 passing (PyPI), 97% line coverage on the TypeScript suite |
 | Known vulnerabilities | Zero, per `npm audit` |
 | File permissions | Report files are owner-only (`0600`) and auto-gitignored, since they hold per-user emails and spend |
 
@@ -279,6 +282,71 @@ Two honest limits on top of that:
 - **Only available for the local-log-based tools.** `claude-code-personal` and `opencode` read session-scoped data straight off disk, so they can group by it. `cursor`, `claude-code`, and `copilot` pull from each vendor's admin API, and none of those three APIs return anything below a per-user aggregate -- there is no session field anywhere in their response shape to group by. Passing `--breakdown session` with those tools prints a clear message explaining that, not an empty table or a fabricated one.
 - **A session's dollar figure inherits whatever estimation status its underlying entries have.** If any log line in a session is missing an exact cost, that session (and the entries within it) is flagged `isEstimated`, the same rule the flat total already follows.
 
+## Commands
+
+Both `teamspend-cli` binaries (npm's `dist/cli.js`, PyPI's `teamspend.cli:main`) accept the same flag set and validate arguments the same way. This table is re-derived from the actual installed binary's `--help` output, not from memory:
+
+| Flag | Argument | Required | What it does |
+|---|---|---|---|
+| `--tools` | `<a>,<b>` | Yes | Exactly two tools to compare, e.g. `cursor,claude-code`. One of: `cursor`, `claude-code`, `copilot`, `opencode`, `claude-code-personal`, `codex`. |
+| `--before` | `YYYY-MM-DD:YYYY-MM-DD` | Yes | The "before" comparison window. |
+| `--after` | `YYYY-MM-DD:YYYY-MM-DD` | Yes | The "after" comparison window. |
+| `--before-csv` | `<path>` | No | CSV fallback for the "before" tool if the admin API can't cover that window. |
+| `--after-csv` | `<path>` | No | CSV fallback for the "after" tool, same rule. |
+| `--breakdown` | `session` | No | Adds a per-session cost table to the terminal output and the JSON report. Only works with `claude-code-personal` and `opencode` (the two local-log adapters); the other four tools print an explanation instead of a fabricated breakdown. |
+| `--json` | none | No | Prints the full JSON report to stdout instead of the human-readable summary. The report file on disk is written either way. |
+| `-h`, `--help` | none | No | Prints usage and exits `0`. |
+| `-V`, `--version` | none | No | Prints the installed version and exits `0`. |
+
+**Exit codes:** `0` on a successful comparison (or on `--help`/`--version`), `1` on an invalid argument (unknown tool, malformed date range, missing required flag) or a comparison where either side failed to resolve. There is no partial-success exit code: a comparison with one side unavailable still exits `1`, matching the report's own `DATA UNAVAILABLE` marker for that side.
+
+One real difference between the two binaries worth knowing: npm's `--help` prints the full flag table above; the currently published PyPI 0.2.2 build's `--help` prints a single condensed usage line with the same flags but no per-flag descriptions. Both accept and validate the same flags identically, only the `--help` text itself differs in verbosity.
+
+## Library API reference
+
+Both packages also work as an importable library, not just a CLI -- `package.json`'s `main`/`types` fields and `python/pyproject.toml`'s package layout both point at real, exported code, re-derived here from the actual source rather than assumed:
+
+**npm (TypeScript), `import { ... } from "teamspend-cli"`:**
+
+```ts
+import { fetchCursorSpend, fetchClaudeCodeSpend, buildComparison } from "teamspend-cli";
+
+const before = await fetchCursorSpend({ start: "2026-04-01", end: "2026-04-30" }, cursorApiKey);
+const after = await fetchClaudeCodeSpend({ start: "2026-06-01", end: "2026-06-30" }, claudeApiKey);
+const report = buildComparison(
+  { label: "before", tool: "cursor", result: before, error: null },
+  { label: "after", tool: "claude-code", result: after, error: null },
+);
+```
+
+| Export | Signature | What it does |
+|---|---|---|
+| `fetchCursorSpend` | `(window: DateWindow, apiKey: string) => Promise<AdapterResult>` | Pulls Cursor Admin API spend for a window, paginating across the API's 30-day-per-call cap. |
+| `fetchClaudeCodeSpend` | `(window: DateWindow, apiKey: string) => Promise<AdapterResult>` | Pulls Claude Enterprise Analytics API spend. Throws `DataUnavailableError` for any window starting before 2026-01-01, the API's hard start date. |
+| `fetchCopilotSpend` | `(window: DateWindow, apiKey: string, org: string, seatPriceUsd?: number) => Promise<AdapterResult>` | Derives a Copilot dollar figure from `ai_credits_used` at GitHub's fixed $0.01/credit rate; always marks the result `isEstimated`. |
+| `importFromCSV` | `(csvPath: string, source: ToolId, window: DateWindow) => Promise<AdapterResult>` | Parses the `date,user_email,cost_usd,is_estimated` CSV schema into the same `AdapterResult` shape the live adapters return. |
+| `buildComparison` | `(before: PeriodOutcome, after: PeriodOutcome) => ComparisonReport` | Builds the before/after delta. Returns a null delta, never a partial number, if either side failed. |
+| `fetchWithRetry` | `(options: FetchWithRetryOptions) => Promise<unknown>` | The shared HTTP client every admin-API adapter uses, with bounded exponential backoff on rate limits and transient errors. |
+| `renderTerminalSummary` | `(report: ComparisonReport, options?: RenderOptions) => string` | Formats a `ComparisonReport` into the terminal summary shown above. |
+| `writeJsonReport` | `(report: ComparisonReport, cwd: string) => Promise<string>` | Writes the `0600`-permission JSON report file and returns its path. |
+| `sumCost`, `topSpenders` | `(users: UserUsage[]) => number` / `(users: UserUsage[], limit: number) => UserUsage[]` | Aggregation helpers used internally and safe to reuse against any `UserUsage[]` array. |
+
+The `opencode`, `codex`, and `claude-code-personal` adapters are CLI-only as of this writing: they're wired into `src/cli.ts` but not re-exported from `src/index.ts`, so they're reachable through the `teamspend` command but not yet through `import { ... } from "teamspend-cli"`. Everything else exported from `src/schema.ts`, `src/errors.ts`, and `src/compare.ts` (types, error classes, `DateWindow`, `AdapterResult`) is available the same way.
+
+**PyPI (Python), `from teamspend import ...`:**
+
+```python
+from teamspend import fetch_cursor_spend, fetch_claude_code_spend, build_comparison
+from teamspend.types import DateWindow
+
+before = fetch_cursor_spend(DateWindow("2026-04-01", "2026-04-30"), cursor_api_key)
+after = fetch_claude_code_spend(DateWindow("2026-06-01", "2026-06-30"), claude_api_key)
+```
+
+The Python package exports the same shape: `fetch_cursor_spend`, `fetch_claude_code_spend`, `fetch_copilot_spend`, `import_from_csv`, `build_comparison`, `render_terminal_summary`, `write_json_report`, plus the `AdapterResult`/`DateWindow`/`ToolId`/`UserUsage` types and the full error hierarchy (`AuthenticationError`, `RetryExhaustedError`, `SchemaDriftError`, `DataUnavailableError`, `CSVSchemaError`, `EmptyCSVError`, `CSVRowError`, `InvalidCliArgError`), listed in full in `python/src/teamspend/__init__.py`. Same as the npm package, the `opencode`/`codex`/`claude-code-personal` adapters are CLI-only, not yet re-exported from the package root.
+
+No generated API doc site exists yet for either package (no TypeDoc or Sphinx build in CI) -- the tables above are the reference until one does.
+
 ## Roadmap
 
 This started narrow on purpose: prove the idea on the two tools one real team was actually migrating between, get it right, then grow it. Next up, roughly in order of how often people ask:
@@ -296,6 +364,7 @@ Want one of these sooner, or a tool that isn't on the list? Open an issue and sa
 - The output includes real emails and dollar amounts, printed to your terminal and saved to a report file. If you wire this into a scheduled CI job on a public repo, that data lands in your build logs, so check your CI provider's log visibility first.
 - Test fixtures are built from each vendor's published API docs, not a live account. If your first real run throws a parsing error, that's a genuine signal a vendor's API shape drifted, not a bug we're hiding from you. Open an issue, it helps everyone who runs into it next.
 - Flat-seat and per-seat billing tiers (Cursor plans without usage overage, Claude.ai Team/Enterprise seats) don't expose true per-user cost through the vendor's own Admin API. When teamspend sees a user with real token or request activity but a reported cost of exactly $0, it marks that user's number, and the whole report, as estimated rather than showing a misleading exact-looking $0.
+- The PyPI package's `--version` currently reports the version string from the 0.2.2 release rather than reading it from the installed distribution's own metadata; the fix already lives on `main` and ships in the next PyPI release. `pip show teamspend-cli` always reports the real installed version in the meantime.
 
 ## What is teamspend, and why does it exist
 
@@ -317,9 +386,9 @@ This is a narrow tool built for one specific job. It is not trying to replace th
 | Audience | The person who has to answer for a team's AI tool bill | An individual developer tracking their own usage | An individual developer wanting a local cost breakdown | A funded platform team consolidating multi-cloud cost |
 | Tool coverage | 6: Cursor, Claude Code, Copilot, OpenCode, Codex, plus a personal mode | 40+ tool integrations including Cursor and Claude Code | 31 tools and agents, including Cursor, Claude Code, Codex, Gemini | Cursor and Anthropic ship as live connectors |
 | Team budget / before-after migration view | Yes, this is the entire product | Not requested by its own community as of this writing | No, single-machine local tracking, not a team admin-API pull | Not migration-specific; broader cost-allocation platform |
-| Scale and backing | New, single-purpose OSS project | 4,400+ stars, 425 forks, MIT-licensed, actively maintained | 8,700+ stars, 680+ forks, free and local-first | $25M raised (seed + Series A), commercial platform |
+| Scale and backing | New, single-purpose OSS project | 4,700+ stars, 395 forks, MIT-licensed, actively maintained | 9,100+ stars, 715 forks, free and local-first | $25M raised (seed + Series A), commercial platform |
 
-**[tokscale](https://github.com/junhoyeo/tokscale)** is a genuinely good project: 4,400+ stars, tracks personal token usage across 40+ coding-agent tools with a leaderboard and contribution graph. Checking its last 100 issues turns up zero requests for team budgets, manager dashboards, or spend rollups, because that's not the product it's building. If what you want is a personal usage tracker across every AI CLI you use, use tokscale. teamspend exists for a different question, the one a team's budget owner asks, not the one an individual contributor asks.
+**[tokscale](https://github.com/junhoyeo/tokscale)** is a genuinely good project: 4,700+ stars, tracks personal token usage across 40+ coding-agent tools with a leaderboard and contribution graph. Checking its last 100 issues turns up zero requests for team budgets, manager dashboards, or spend rollups, because that's not the product it's building. If what you want is a personal usage tracker across every AI CLI you use, use tokscale. teamspend exists for a different question, the one a team's budget owner asks, not the one an individual contributor asks.
 
 **[codeburn](https://github.com/getagentseal/codeburn)** is the closest thing to real competition teamspend has: free, local-first, and it already breaks cost down by model, project, and task across more tools than teamspend covers. If what you want is a personal, single-machine cost breakdown across a wide tool list, codeburn does that better than teamspend does. What it doesn't do is pull from a vendor's admin API to answer the team-level, before-after migration question, which is the one thing teamspend was built for.
 
