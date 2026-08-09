@@ -7,6 +7,17 @@ package, both now named `teamspend-cli` (formerly published as plain
 sources and compute the same before/after delta; entries note which
 distribution they apply to.
 
+## [0.2.4 (PyPI)] - 2026-08-08
+
+Bug fix. `teamspend.__version__` (the module-level attribute, exported in
+`__all__` for programmatic/library callers) was a separate hardcoded
+`"0.1.0"` string in `python/src/teamspend/__init__.py` that had drifted
+from the real installed version -- unlike `cli.py`'s `_VERSION`, which a
+prior fix already made read `importlib.metadata.version("teamspend-cli")`
+dynamically. `__version__` now uses the same dynamic lookup, so
+`import teamspend; teamspend.__version__` and `teamspend --version` always
+agree and both reflect the real installed/published version.
+
 ## [0.2.5 (npm) / 0.2.3 (PyPI)] - 2026-08-08
 
 Bug fix, both distributions. `--before-csv`/`--after-csv` silently stopped

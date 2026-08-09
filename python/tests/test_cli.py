@@ -2,8 +2,21 @@ import json
 
 import pytest
 
+import teamspend
 import teamspend.http_client as http_client
 from teamspend.cli import run
+
+
+def test_module_version_matches_cli_version_flag(capsys):
+    """Regression: teamspend.__version__ was a separate hardcoded string
+    ("0.1.0") that had drifted from the real installed version, even after
+    the CLI's own --version flag was fixed to read it dynamically. Both
+    must report the same, real, installed version."""
+    code = run(["--version"])
+    assert code == 0
+    cli_reported = capsys.readouterr().out.strip()
+    assert cli_reported == f"teamspend {teamspend.__version__}"
+    assert teamspend.__version__ != "0.1.0"
 
 
 def test_rejects_an_unknown_tool_name(capsys):
