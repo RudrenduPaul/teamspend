@@ -7,38 +7,26 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D18.3.0-brightgreen.svg)](package.json)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
 
-**Your AI coding tools will never tell you if switching between them actually saved money. teamspend does, in one command.**
+<p align="center">
+<a href="#get-started-in-under-a-minute">Install</a> •
+<a href="#see-it-in-action">Usage</a> •
+<a href="#what-it-actually-does">Features</a> •
+<a href="#how-teamspend-compares">Compare</a> •
+<a href="#faq">FAQ</a> •
+<a href="#contributing">Contributing</a>
+</p>
 
-Six tools now, not two: Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI, plus a credential-free personal mode for anyone without admin access.
+**Your AI coding tools will never tell you if switching between them actually saved money. teamspend does, in one command.**
 
 ![Terminal recording: installing teamspend-cli from a packed tarball, then running a claude-code-personal before/after comparison that prints total spend for each period and a DELTA line](docs/demo.gif)
 
 The recording above uses `claude-code-personal` (credential-free, reads local session logs) so the install-to-first-run flow plays end to end with no admin API keys required; the [live output shape](#see-it-in-action) is identical whichever adapter you point it at.
 
-    npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```bash
+npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```
 
-More teams are running more than one AI coding tool at once, or moving between them, than ever before. Every one of those tools has a dashboard that's perfectly accurate about itself and structurally incapable of showing you anything else. teamspend is the missing piece: one real number, pulled straight from both tools' own APIs, showing exactly what changed.
-
-## Table of contents
-
-- [See it in action](#see-it-in-action)
-- [What it actually does](#what-it-actually-does)
-- [Get started in under a minute](#get-started-in-under-a-minute)
-- [Built to be trusted, not just used](#built-to-be-trusted-not-just-used)
-- [CSV import, for the history a live API can't reach](#csv-import-for-the-history-a-live-api-cant-reach)
-- [GitHub Copilot support](#github-copilot-support)
-- [OpenCode: local-only, no API key needed](#opencode-local-only-no-api-key-needed)
-- [Codex CLI: local-only, no API key needed](#codex-cli-local-only-no-api-key-needed)
-- [Personal usage mode, for when you don't have admin access](#personal-usage-mode-for-when-you-dont-have-admin-access)
-- [Session-level cost breakdown](#session-level-cost-breakdown)
-- [Roadmap](#roadmap)
-- [Good to know before you run it](#good-to-know-before-you-run-it)
-- [What is teamspend, and why does it exist](#what-is-teamspend-and-why-does-it-exist)
-- [How teamspend compares](#how-teamspend-compares)
-- [FAQ](#faq)
-- [Contributing](#contributing)
-- [Success stories](#success-stories)
-- [License](#license)
+Six tools now, not two: Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI, plus a credential-free personal mode for anyone without admin access. More teams are running more than one AI coding tool at once, or moving between them, than ever before. Every one of those tools has a dashboard that's perfectly accurate about itself and structurally incapable of showing you anything else. teamspend is the missing piece: one real number, pulled straight from both tools' own APIs, showing exactly what changed.
 
 ## See it in action
 
@@ -79,11 +67,13 @@ teamspend ships two independent, equally first-class packages -- pick
 whichever fits your toolchain, or install both. They talk to the same six
 data sources and compute the same before/after delta.
 
-    # npm -- JavaScript/TypeScript CLI + library
-    npm install -g teamspend-cli
+```bash
+# npm -- JavaScript/TypeScript CLI + library
+npm install -g teamspend-cli
 
-    # PyPI -- Python CLI + library (genuine port, not a wrapper around the Node binary)
-    pip install teamspend-cli
+# PyPI -- Python CLI + library (genuine port, not a wrapper around the Node binary)
+pip install teamspend-cli
+```
 
 Both packages are named `teamspend-cli` (the older plain `teamspend` name
 is deprecated on both registries -- same maintainer, same repo, just
@@ -92,12 +82,16 @@ command is `teamspend`.
 
 Give it the two API keys for the tools you're comparing:
 
-    export TEAMSPEND_CURSOR_TOKEN=<your Cursor Admin API key>
-    export TEAMSPEND_CLAUDE_CODE_TOKEN=<your Anthropic Admin/Analytics API key>
+```bash
+export TEAMSPEND_CURSOR_TOKEN=<your Cursor Admin API key>
+export TEAMSPEND_CLAUDE_CODE_TOKEN=<your Anthropic Admin/Analytics API key>
+```
 
 Both need org-admin-level access on their platform. If you can already see billing for your org, you have what you need.
 
-    teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```bash
+teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```
 
 Add `--json` to print the full JSON report to stdout instead of the
 human-readable summary above -- useful for piping into another script or a
