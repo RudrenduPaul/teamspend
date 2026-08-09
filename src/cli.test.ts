@@ -127,6 +127,92 @@ describe("run (CLI validation)", () => {
     delete process.env.TEAMSPEND_CLAUDE_CODE_TOKEN;
   });
 
+  it("falls back to --before-csv when the tool's API token is simply missing, not just when the window predates API history (regression: missing-token check threw a plain Error that bypassed the DataUnavailableError CSV fallback)", async () => {
+    delete process.env.TEAMSPEND_CURSOR_TOKEN;
+    process.env.TEAMSPEND_CLAUDE_CODE_TOKEN = "test-claude-key";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () =>
+        jsonResponse(200, {
+          users: [
+            {
+              user_id: "u1",
+              email: "a@x.com",
+              input_tokens: 1,
+              output_tokens: 1,
+              cache_read_tokens: 0,
+              cache_write_tokens: 0,
+              requests: 1,
+              cost_usd: 10,
+              spend_usd: 10,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const csvPath = path.join(tmpDir, "before.csv");
+    await writeFile(
+      csvPath,
+      "date,user_email,cost_usd,is_estimated\n2025-11-01,jane@example.com,12.50,false\n",
+    );
+
+    const code = await run([
+      "--tools",
+      "cursor,claude-code",
+      "--before",
+      "2025-11-01:2025-11-30",
+      "--after",
+      "2026-07-01:2026-07-31",
+      "--before-csv",
+      csvPath,
+    ]);
+    expect(code).toBe(0);
+
+    const files = (await readdir(tmpDir)).filter((f) =>
+      f.startsWith("teamspend-snapshot-"),
+    );
+    expect(files).toHaveLength(1);
+    const contents = await readFile(path.join(tmpDir, files[0] as string), "utf-8");
+    const report = JSON.parse(contents) as Record<string, unknown>;
+    const before = report.before as {
+      result: { users: Array<{ userEmail: string; costUsd: number }> };
+    };
+    expect(before.result.users[0]?.userEmail).toBe("jane@example.com");
+    expect(before.result.users[0]?.costUsd).toBe(12.5);
+
+    delete process.env.TEAMSPEND_CLAUDE_CODE_TOKEN;
+  });
+
+  it("still reports DATA UNAVAILABLE naming the missing token when no CSV fallback is provided", async () => {
+    delete process.env.TEAMSPEND_CURSOR_TOKEN;
+    process.env.TEAMSPEND_CLAUDE_CODE_TOKEN = "test-claude-key";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () =>
+        jsonResponse(200, {
+          users: [],
+        }),
+      ),
+    );
+
+    const code = await run([
+      "--tools",
+      "cursor,claude-code",
+      "--before",
+      "2026-06-01:2026-06-30",
+      "--after",
+      "2026-07-01:2026-07-31",
+    ]);
+    expect(code).toBe(1);
+
+    const terminalOutput = logSpy.mock.calls.map((call) => call[0]).join("\n");
+    expect(terminalOutput).toContain("DATA UNAVAILABLE");
+    expect(terminalOutput).toContain("TEAMSPEND_CURSOR_TOKEN");
+
+    delete process.env.TEAMSPEND_CLAUDE_CODE_TOKEN;
+  });
+
   it("rejects an unrecognized --breakdown value", async () => {
     const code = await run([
       "--tools",

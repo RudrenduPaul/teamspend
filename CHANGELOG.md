@@ -7,6 +7,19 @@ package, both now named `teamspend-cli` (formerly published as plain
 sources and compute the same before/after delta; entries note which
 distribution they apply to.
 
+## [0.2.5 (npm) / 0.2.3 (PyPI)] - 2026-08-08
+
+Bug fix, both distributions. `--before-csv`/`--after-csv` silently stopped
+working whenever a tool's API token was simply unset: the missing-token
+check raised a plain `Error`/`RuntimeError` instead of `DataUnavailableError`,
+so the CSV-fallback catch block (which only matches `DataUnavailableError`)
+never triggered and the CLI reported `DATA UNAVAILABLE: Missing
+TEAMSPEND_*_TOKEN` even with a valid CSV file passed in -- exactly the
+scenario the README's own CSV-import quickstart example hits. Missing-token
+and missing-org checks for cursor, claude-code, and copilot now raise
+`DataUnavailableError`, so the existing CSV fallback engages correctly.
+Regression tests added on both sides.
+
 ## [renamed to teamspend-cli on both registries] - 2026-07-18
 
 Both the npm package and the PyPI package changed name from `teamspend` to

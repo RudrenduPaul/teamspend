@@ -157,18 +157,18 @@ def _fetch_tool(
     try:
         if tool == "cursor":
             if not api_key:
-                raise RuntimeError(f"Missing {env_var}")
+                raise DataUnavailableError(tool, f"Missing {env_var}")
             return fetch_cursor_spend(window, api_key)
         if tool == "claude-code":
             if not api_key:
-                raise RuntimeError(f"Missing {env_var}")
+                raise DataUnavailableError(tool, f"Missing {env_var}")
             return fetch_claude_code_spend(window, api_key)
         if tool == "copilot":
             if not api_key:
-                raise RuntimeError(f"Missing {env_var}")
+                raise DataUnavailableError(tool, f"Missing {env_var}")
             org = os.environ.get("TEAMSPEND_COPILOT_ORG")
             if not org:
-                raise RuntimeError("Missing TEAMSPEND_COPILOT_ORG")
+                raise DataUnavailableError(tool, "Missing TEAMSPEND_COPILOT_ORG")
             return fetch_copilot_spend(
                 window, api_key, org, _parse_copilot_seat_price()
             )

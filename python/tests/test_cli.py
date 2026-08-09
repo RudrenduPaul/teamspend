@@ -102,6 +102,97 @@ def test_runs_end_to_end_with_both_adapters_succeeding_and_writes_the_json_repor
     assert len(report_files) == 1
 
 
+def test_falls_back_to_before_csv_when_the_tool_api_token_is_simply_missing(
+    tmp_path, monkeypatch
+):
+    """Regression: the missing-token check raised a plain RuntimeError that
+    bypassed the DataUnavailableError CSV fallback, so --before-csv was
+    silently ignored whenever the token was simply unset (not just when the
+    window predated API history)."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("TEAMSPEND_CURSOR_TOKEN", raising=False)
+    monkeypatch.setenv("TEAMSPEND_CLAUDE_CODE_TOKEN", "test-claude-key")
+
+    def fake_transport(url, headers, timeout):
+        body = json.dumps(
+            {
+                "users": [
+                    {
+                        "user_id": "u1",
+                        "email": "a@x.com",
+                        "input_tokens": 1,
+                        "output_tokens": 1,
+                        "cache_read_tokens": 0,
+                        "cache_write_tokens": 0,
+                        "requests": 1,
+                        "cost_usd": 10,
+                        "spend_usd": 10,
+                    }
+                ]
+            }
+        ).encode("utf-8")
+        return http_client.HttpResponse(status=200, body=body)
+
+    monkeypatch.setattr(http_client, "default_transport", fake_transport)
+
+    csv_path = tmp_path / "before.csv"
+    csv_path.write_text(
+        "date,user_email,cost_usd,is_estimated\n"
+        "2025-11-01,jane@example.com,12.50,false\n"
+    )
+
+    code = run(
+        [
+            "--tools",
+            "cursor,claude-code",
+            "--before",
+            "2025-11-01:2025-11-30",
+            "--after",
+            "2026-07-01:2026-07-31",
+            "--before-csv",
+            str(csv_path),
+        ]
+    )
+    assert code == 0
+
+    report_files = list(tmp_path.glob("teamspend-snapshot-*.json"))
+    assert len(report_files) == 1
+    report = json.loads(report_files[0].read_text())
+    before_users = report["before"]["result"]["users"]
+    assert before_users[0]["userEmail"] == "jane@example.com"
+    assert before_users[0]["costUsd"] == 12.5
+
+
+def test_still_reports_data_unavailable_naming_missing_token_when_no_csv_fallback(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("TEAMSPEND_CURSOR_TOKEN", raising=False)
+    monkeypatch.setenv("TEAMSPEND_CLAUDE_CODE_TOKEN", "test-claude-key")
+
+    def fake_transport(url, headers, timeout):
+        body = json.dumps({"users": []}).encode("utf-8")
+        return http_client.HttpResponse(status=200, body=body)
+
+    monkeypatch.setattr(http_client, "default_transport", fake_transport)
+
+    code = run(
+        [
+            "--tools",
+            "cursor,claude-code",
+            "--before",
+            "2026-06-01:2026-06-30",
+            "--after",
+            "2026-07-01:2026-07-31",
+        ]
+    )
+    assert code == 1
+
+    out = capsys.readouterr().out
+    assert "DATA UNAVAILABLE" in out
+    assert "TEAMSPEND_CURSOR_TOKEN" in out
+
+
 def test_rejects_an_unrecognized_breakdown_value(capsys):
     code = run(
         [
