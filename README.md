@@ -194,6 +194,8 @@ and [tokscale](https://github.com/junhoyeo/tokscale) both already read.
 
     teamspend --tools claude-code,opencode --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
+![Terminal recording: teamspend run with the OpenCode local-log adapter and --breakdown session, printing estimated total spend and a per-session cost table for both periods, then the overall DELTA line](docs/demo-opencode.gif)
+
 Two honest caveats worth knowing before you trust this number:
 
 - **It's this machine's usage, not your team's.** OpenCode's local message
