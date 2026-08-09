@@ -11,11 +11,11 @@
 
 Six tools now, not two: Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI, plus a credential-free personal mode for anyone without admin access.
 
-    npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
-
 ![Terminal recording: installing teamspend-cli from a packed tarball, then running a claude-code-personal before/after comparison that prints total spend for each period and a DELTA line](docs/demo.gif)
 
 The recording above uses `claude-code-personal` (credential-free, reads local session logs) so the install-to-first-run flow plays end to end with no admin API keys required; the [live output shape](#see-it-in-action) is identical whichever adapter you point it at.
+
+    npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 More teams are running more than one AI coding tool at once, or moving between them, than ever before. Every one of those tools has a dashboard that's perfectly accurate about itself and structurally incapable of showing you anything else. teamspend is the missing piece: one real number, pulled straight from both tools' own APIs, showing exactly what changed.
 
