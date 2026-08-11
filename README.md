@@ -1,5 +1,8 @@
 # teamspend
 
+<!-- mcp-name: io.github.RudrenduPaul/teamspend -->
+<!-- Ownership-proof string for registry.modelcontextprotocol.io publishing. Do not remove. -->
+
 [![npm version](https://img.shields.io/npm/v/teamspend-cli.svg)](https://www.npmjs.com/package/teamspend-cli)
 [![PyPI version](https://img.shields.io/pypi/v/teamspend-cli.svg)](https://pypi.org/project/teamspend-cli/)
 [![CI](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml)
@@ -274,6 +277,44 @@ Two honest limits on top of that:
 
 - **Only available for the local-log-based tools.** `claude-code-personal` and `opencode` read session-scoped data straight off disk, so they can group by it. `cursor`, `claude-code`, and `copilot` pull from each vendor's admin API, and none of those three APIs return anything below a per-user aggregate -- there is no session field anywhere in their response shape to group by. Passing `--breakdown session` with those tools prints a clear message explaining that, not an empty table or a fabricated one.
 - **A session's dollar figure inherits whatever estimation status its underlying entries have.** If any log line in a session is missing an exact cost, that session (and the entries within it) is flagged `isEstimated`, the same rule the flat total already follows.
+
+## MCP Server
+
+teamspend ships a [Model Context Protocol](https://modelcontextprotocol.io) server so an AI agent
+(Claude, Cursor, or any MCP-compatible client) can run a spend comparison directly, without a human
+invoking the CLI by hand.
+
+Install the extra:
+
+```bash
+pip install "teamspend-cli[mcp]"
+```
+
+Add it to your MCP client's config (for Claude Desktop, `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "teamspend": {
+      "command": "uvx",
+      "args": ["--from", "teamspend-cli", "teamspend-mcp"]
+    }
+  }
+}
+```
+
+The server exposes one tool, `run`, that shells out to the published `teamspend` npm binary with the
+given arguments plus `--json`, and returns the parsed JSON result:
+
+```
+run(["--tools", "claude-code-personal,opencode", "--before", "2026-04-01:2026-04-30", "--after", "2026-06-01:2026-06-30"])
+```
+
+The local-log adapters (`claude-code-personal`, `opencode`, `codex`) scan real session files on
+disk, so a call that uses them can take up to 30 seconds to return, especially against a large
+`~/.claude/projects/` or `~/.local/share/opencode/storage/` history. Transport is stdio, so there is
+nothing to host: the MCP client spawns the server as a local subprocess. Source:
+[`python/src/teamspend/mcp_server.py`](python/src/teamspend/mcp_server.py).
 
 ## Roadmap
 
