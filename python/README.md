@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.RudrenduPaul/teamspend -->
+
 # teamspend (Python)
 
 Compare AI coding tool spend before and after a migration -- Cursor,
