@@ -1,5 +1,8 @@
 # teamspend
 
+<!-- mcp-name: io.github.RudrenduPaul/teamspend -->
+<!-- Ownership-proof string for registry.modelcontextprotocol.io publishing. Do not remove. -->
+
 [![npm version](https://img.shields.io/npm/v/teamspend-cli.svg)](https://www.npmjs.com/package/teamspend-cli)
 [![PyPI version](https://img.shields.io/pypi/v/teamspend-cli.svg)](https://pypi.org/project/teamspend-cli/)
 [![CI](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/teamspend/actions/workflows/ci.yml)
@@ -7,17 +10,26 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D18.3.0-brightgreen.svg)](package.json)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
 
+<p align="center">
+<a href="#get-started-in-under-a-minute">Install</a> •
+<a href="#see-it-in-action">Usage</a> •
+<a href="#what-it-actually-does">Features</a> •
+<a href="#how-teamspend-compares">Compare</a> •
+<a href="#faq">FAQ</a> •
+<a href="#contributing">Contributing</a>
+</p>
+
 **Your AI coding tools will never tell you if switching between them actually saved money. teamspend does, in one command.**
-
-Six tools now, not two: Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI, plus a credential-free personal mode for anyone without admin access.
-
-    npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
 
 ![Terminal recording: installing teamspend-cli from a packed tarball, then running a claude-code-personal before/after comparison that prints total spend for each period and a DELTA line](docs/demo.gif)
 
 The recording above uses `claude-code-personal` (credential-free, reads local session logs) so the install-to-first-run flow plays end to end with no admin API keys required; the [live output shape](#see-it-in-action) is identical whichever adapter you point it at.
 
-More teams are running more than one AI coding tool at once, or moving between them, than ever before. Every one of those tools has a dashboard that's perfectly accurate about itself and structurally incapable of showing you anything else. teamspend is the missing piece: one real number, pulled straight from both tools' own APIs, showing exactly what changed.
+```bash
+npx teamspend-cli --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```
+
+Six tools now, not two: Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI, plus a credential-free personal mode for anyone without admin access. More teams are running more than one AI coding tool at once, or moving between them, than ever before. Every one of those tools has a dashboard that's perfectly accurate about itself and structurally incapable of showing you anything else. teamspend is the missing piece: one real number, pulled straight from both tools' own APIs, showing exactly what changed.
 
 ## Table of contents
 
@@ -33,6 +45,7 @@ More teams are running more than one AI coding tool at once, or moving between t
 - [Session-level cost breakdown](#session-level-cost-breakdown)
 - [Commands](#commands)
 - [Library API reference](#library-api-reference)
+- [MCP Server](#mcp-server)
 - [Roadmap](#roadmap)
 - [Good to know before you run it](#good-to-know-before-you-run-it)
 - [What is teamspend, and why does it exist](#what-is-teamspend-and-why-does-it-exist)
@@ -81,11 +94,13 @@ teamspend ships two independent, equally first-class packages -- pick
 whichever fits your toolchain, or install both. They talk to the same six
 data sources and compute the same before/after delta.
 
-    # npm -- JavaScript/TypeScript CLI + library
-    npm install -g teamspend-cli
+```bash
+# npm -- JavaScript/TypeScript CLI + library
+npm install -g teamspend-cli
 
-    # PyPI -- Python CLI + library (genuine port, not a wrapper around the Node binary)
-    pip install teamspend-cli
+# PyPI -- Python CLI + library (genuine port, not a wrapper around the Node binary)
+pip install teamspend-cli
+```
 
 Both packages are named `teamspend-cli` (the older plain `teamspend` name
 is deprecated on both registries -- same maintainer, same repo, just
@@ -94,12 +109,16 @@ command is `teamspend`.
 
 Give it the two API keys for the tools you're comparing:
 
-    export TEAMSPEND_CURSOR_TOKEN=<your Cursor Admin API key>
-    export TEAMSPEND_CLAUDE_CODE_TOKEN=<your Anthropic Admin/Analytics API key>
+```bash
+export TEAMSPEND_CURSOR_TOKEN=<your Cursor Admin API key>
+export TEAMSPEND_CLAUDE_CODE_TOKEN=<your Anthropic Admin/Analytics API key>
+```
 
 Both need org-admin-level access on their platform. If you can already see billing for your org, you have what you need.
 
-    teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```bash
+teamspend --tools cursor,claude-code --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+```
 
 Add `--json` to print the full JSON report to stdout instead of the
 human-readable summary above -- useful for piping into another script or a
@@ -126,7 +145,7 @@ A tool that touches your team's spend and email data should earn that trust in t
 | | |
 |---|---|
 | Runtime dependencies | Zero |
-| Package size | 56.8 kB packed, 193.1 kB unpacked (npm 0.2.3) |
+| Package size | 56.8 kB packed, 193.1 kB unpacked |
 | Cold install to first response | Under 1 second, measured with a cleared npm/npx cache |
 | Tests | 102 passing (npm), 116 passing (PyPI), 97% line coverage on the TypeScript suite |
 | Known vulnerabilities | Zero, per `npm audit` |
@@ -196,6 +215,8 @@ and that [ccusage's OpenCode guide](https://ccusage.com/guide/opencode/)
 and [tokscale](https://github.com/junhoyeo/tokscale) both already read.
 
     teamspend --tools claude-code,opencode --before 2026-04-01:2026-04-30 --after 2026-06-01:2026-06-30
+
+![Terminal recording: teamspend run with the OpenCode local-log adapter and --breakdown session, printing estimated total spend and a per-session cost table for both periods, then the overall DELTA line](docs/demo-opencode.gif)
 
 Two honest caveats worth knowing before you trust this number:
 
@@ -300,7 +321,7 @@ Both `teamspend-cli` binaries (npm's `dist/cli.js`, PyPI's `teamspend.cli:main`)
 
 **Exit codes:** `0` on a successful comparison (or on `--help`/`--version`), `1` on an invalid argument (unknown tool, malformed date range, missing required flag) or a comparison where either side failed to resolve. There is no partial-success exit code: a comparison with one side unavailable still exits `1`, matching the report's own `DATA UNAVAILABLE` marker for that side.
 
-One real difference between the two binaries worth knowing: npm's `--help` prints the full flag table above; the currently published PyPI 0.2.2 build's `--help` prints a single condensed usage line with the same flags but no per-flag descriptions. Both accept and validate the same flags identically, only the `--help` text itself differs in verbosity.
+One real difference between the two binaries worth knowing: npm's `--help` prints the full flag table above; the currently published PyPI 0.2.7 build's `--help` prints a single condensed usage line with the same flags but no per-flag descriptions. Both accept and validate the same flags identically, only the `--help` text itself differs in verbosity.
 
 ## Library API reference
 
@@ -346,6 +367,44 @@ after = fetch_claude_code_spend(DateWindow("2026-06-01", "2026-06-30"), claude_a
 The Python package exports the same shape: `fetch_cursor_spend`, `fetch_claude_code_spend`, `fetch_copilot_spend`, `import_from_csv`, `build_comparison`, `render_terminal_summary`, `write_json_report`, plus the `AdapterResult`/`DateWindow`/`ToolId`/`UserUsage` types and the full error hierarchy (`AuthenticationError`, `RetryExhaustedError`, `SchemaDriftError`, `DataUnavailableError`, `CSVSchemaError`, `EmptyCSVError`, `CSVRowError`, `InvalidCliArgError`), listed in full in `python/src/teamspend/__init__.py`. Same as the npm package, the `opencode`/`codex`/`claude-code-personal` adapters are CLI-only, not yet re-exported from the package root.
 
 No generated API doc site exists yet for either package (no TypeDoc or Sphinx build in CI) -- the tables above are the reference until one does.
+
+## MCP Server
+
+teamspend ships a [Model Context Protocol](https://modelcontextprotocol.io) server so an AI agent
+(Claude, Cursor, or any MCP-compatible client) can run a spend comparison directly, without a human
+invoking the CLI by hand.
+
+Install the extra:
+
+```bash
+pip install "teamspend-cli[mcp]"
+```
+
+Add it to your MCP client's config (for Claude Desktop, `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "teamspend": {
+      "command": "uvx",
+      "args": ["--from", "teamspend-cli", "teamspend-mcp"]
+    }
+  }
+}
+```
+
+The server exposes one tool, `run`, that shells out to the published `teamspend` npm binary with the
+given arguments plus `--json`, and returns the parsed JSON result:
+
+```
+run(["--tools", "claude-code-personal,opencode", "--before", "2026-04-01:2026-04-30", "--after", "2026-06-01:2026-06-30"])
+```
+
+The local-log adapters (`claude-code-personal`, `opencode`, `codex`) scan real session files on
+disk, so a call that uses them can take up to 30 seconds to return, especially against a large
+`~/.claude/projects/` or `~/.local/share/opencode/storage/` history. Transport is stdio, so there is
+nothing to host: the MCP client spawns the server as a local subprocess. Source:
+[`python/src/teamspend/mcp_server.py`](python/src/teamspend/mcp_server.py).
 
 ## Roadmap
 

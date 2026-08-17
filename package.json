@@ -1,6 +1,6 @@
 {
   "name": "teamspend-cli",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "See what your team actually spends on AI coding tools across a migration, in one comparison. Cursor, Claude Code, GitHub Copilot, OpenCode, and Codex CLI.",
   "homepage": "https://github.com/RudrenduPaul/teamspend#readme",
   "repository": {
@@ -60,5 +60,9 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.1",
+    "nanoid": "^3.3.17"
   }
 }

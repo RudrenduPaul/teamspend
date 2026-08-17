@@ -17,6 +17,8 @@ compute the same before/after delta; see
 https://github.com/RudrenduPaul/teamspend for the canonical documentation
 and the original TypeScript source.
 """
+from importlib import metadata as _importlib_metadata
+
 from .adapters.claude_code import fetch_claude_code_spend
 from .adapters.copilot import fetch_copilot_spend
 from .adapters.csv_import import import_from_csv
@@ -41,7 +43,16 @@ from .output import (
 )
 from .types import AdapterResult, DateWindow, ToolId, UserUsage, sum_cost, top_spenders
 
-__version__ = "0.1.0"
+try:
+    # Read the version from the installed package's own metadata, same as
+    # cli.py's _resolve_version() already does for `teamspend --version`,
+    # rather than a separate hand-maintained string here -- this constant
+    # was still "0.1.0" while the package had shipped 0.2.3, so
+    # `teamspend.__version__` (unlike the CLI's --version) silently
+    # reported a stale, wrong version to any caller importing the module.
+    __version__ = _importlib_metadata.version("teamspend-cli")
+except _importlib_metadata.PackageNotFoundError:
+    __version__ = "0.0.0-dev"
 
 __all__ = [
     "__version__",

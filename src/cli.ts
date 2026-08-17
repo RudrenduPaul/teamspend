@@ -158,17 +158,17 @@ async function fetchTool(
 
   try {
     if (tool === "cursor") {
-      if (!apiKey) throw new Error(`Missing ${envVar}`);
+      if (!apiKey) throw new DataUnavailableError(tool, `Missing ${envVar}`);
       return await fetchCursorSpend(window, apiKey);
     }
     if (tool === "claude-code") {
-      if (!apiKey) throw new Error(`Missing ${envVar}`);
+      if (!apiKey) throw new DataUnavailableError(tool, `Missing ${envVar}`);
       return await fetchClaudeCodeSpend(window, apiKey);
     }
     if (tool === "copilot") {
-      if (!apiKey) throw new Error(`Missing ${envVar}`);
+      if (!apiKey) throw new DataUnavailableError(tool, `Missing ${envVar}`);
       const org = process.env.TEAMSPEND_COPILOT_ORG;
-      if (!org) throw new Error("Missing TEAMSPEND_COPILOT_ORG");
+      if (!org) throw new DataUnavailableError(tool, "Missing TEAMSPEND_COPILOT_ORG");
       return await fetchCopilotSpend(
         window,
         apiKey,
