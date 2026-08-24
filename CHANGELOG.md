@@ -39,14 +39,17 @@ other packages. Same maintainer, same repo, same code -- only the package
 names changed. The installed command is `teamspend` either way -- this
 rename only affects the name you pass to `npm install`/`npx`/`pip install`.
 
-- **npm:** the old `teamspend` name is deprecated (`npm deprecate`) and
-  points installers at `teamspend-cli`; it is not removed, so anything
-  already depending on it keeps working, just without future updates.
-- **PyPI:** the old `teamspend` package's final release (0.2.2) rewrites
-  its own README to point installers at `teamspend-cli` and ships no new
-  functionality beyond that redirect. PyPI has no native deprecation flag,
-  so a final release carrying the redirect notice is the standard
-  convention for a PyPI package rename.
+- **npm:** the old `teamspend` name was initially deprecated (`npm
+  deprecate`) to point installers at `teamspend-cli` without removing it.
+  As of 2026-08-03, the old name was fully unpublished from the registry
+  (`npm view teamspend` now returns an `unpublished` record for all of its
+  prior versions); it is no longer installable under any version. Anything
+  still depending on it must migrate to `teamspend-cli`.
+- **PyPI:** the old `teamspend` package's final release (0.2.2) briefly
+  rewrote its own README to point installers at `teamspend-cli`. As of
+  2026-08-03, the old package was fully unpublished from PyPI (`pip install
+  teamspend` and `pypi.org/pypi/teamspend/json` both return 404/not found);
+  it is no longer installable under any version.
 
 ## [0.2.1] - 2026-07-18
 

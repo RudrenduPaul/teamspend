@@ -103,8 +103,9 @@ pip install teamspend-cli
 ```
 
 Both packages are named `teamspend-cli` (the older plain `teamspend` name
-is deprecated on both registries -- same maintainer, same repo, just
-renamed to match this project's other packages). Either way, the installed
+was renamed to match this project's other packages, then fully unpublished
+from both registries as of 2026-08-03 -- same maintainer, same repo, but
+no longer installable under any version). Either way, the installed
 command is `teamspend`.
 
 Give it the two API keys for the tools you're comparing:
