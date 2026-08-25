@@ -38,8 +38,10 @@ uv add teamspend-cli
 Zero runtime dependencies: the standard library's `urllib` handles every
 admin-API call. The complementary JS/TS distribution installs the same way
 on the npm side: `npm install -g teamspend-cli` (or `npx teamspend-cli ...`
-to run it once without installing; the older `teamspend` npm name is
-deprecated in favor of `teamspend-cli`, same maintainer and repo) -- see the
+to run it once without installing; the older `teamspend` npm name was
+renamed to `teamspend-cli`, same maintainer and repo, and was fully
+unpublished from npm as of 2026-08-03 -- no longer installable under any
+version) -- see the
 [project README](https://github.com/RudrenduPaul/teamspend#readme) for
 that package. Both distributions (this PyPI package and the npm package)
 are first-class and maintained together.
