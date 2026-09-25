@@ -14,6 +14,10 @@ distribution they apply to.
 - The npm package now publishes from GitHub Actions through npm Trusted
   Publishing (OIDC), with no long-lived npm token.
 
+## [0.2.6 (npm)] - 2026-09-25
+
+- npm 0.2.6: republished through npm Trusted Publishing with provenance, no code changes
+
 ## [0.2.4 (PyPI)] - 2026-08-08
 
 Bug fix. `teamspend.__version__` (the module-level attribute, exported in
