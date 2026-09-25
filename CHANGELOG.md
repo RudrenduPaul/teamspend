@@ -7,6 +7,13 @@ package, both now named `teamspend-cli` (formerly published as plain
 sources and compute the same before/after delta; entries note which
 distribution they apply to.
 
+## [Unreleased] - 2026-09-24
+
+- Development dependencies upgraded (eslint 10, TypeScript 6, vitest 4);
+  there are no runtime dependency changes, so no version bump.
+- The npm package now publishes from GitHub Actions through npm Trusted
+  Publishing (OIDC), with no long-lived npm token.
+
 ## [0.2.4 (PyPI)] - 2026-08-08
 
 Bug fix. `teamspend.__version__` (the module-level attribute, exported in
